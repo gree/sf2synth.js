@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project name="project" default="all" basedir="bin">
+  <property name="rootpath" value=".."/>
+  <property name="rootdir" location="${rootpath}"/>
+  <property name="bin" value="."/>
+  <property name="level" value="ADVANCED_OPTIMIZATIONS"/>
+  <property name="src" value="${rootpath}/src"/>
+  <property name="def" value="${rootpath}/define"/>
+  <property name="vendor" value="${rootpath}/vendor"/>
+  <property name="compiler" value="${vendor}/google-closure-compiler/compiler.jar"/>
+  <property name="closure_primitives" value="${rootpath}/closure-primitives/base.js"/>
+  <property name="depswriter" value="${rootpath}/closure-primitives/depswriter.py"/>
+  <property name="depend" value="${rootpath}/closure-primitives/deps.js"/>
+  <property name="export" value="${rootpath}/export"/>
+  <property name="externs" value="${rootpath}/externs"/>
+
+  <!-- ライセンスとビルドされたファイルをプロパティとして読み込む -->
+  <loadfile property="license" srcfile="../LICENSE.min"/>
+
+  <!-- ビルドの事前準備 -->
+  <target name="prebuild">
+    <mkdir dir="${bin}"/>
+  </target>
+
+  <!-- 依存関係を解決する -->
+  <target name="deps">
+    <exec executable="python" failonerror="true">
+      <arg line="${depswriter}"/>
+      <arg line="--root_with_prefix=&quot;.. ..&quot;"/>
+      <arg line="--output_file=${depend}"/>
+    </exec>
+
+    <pathconvert property="srcfiles" pathsep=" ">
+      <map from="${rootdir}" to="--js .."/>
+      <fileset dir="${src}" includes="*.js"/>
+    </pathconvert>
+
+    <pathconvert property="exportfiles" pathsep=" ">
+      <map from="${rootdir}" to="--js .."/>
+      <fileset dir="${export}" includes="*.js"/>
+    </pathconvert>
+  </target>
+
+  <target name="parser" depends="deps,prebuild">
+    <!-- 出力ファイル名 -->
+    <local name="basename"/>
+    <property name="basename" value="sf2.parser.min.js"/>
+    <local name="outfile"/>
+    <property name="outfile" value="${bin}/${basename}"/>
+    <!-- ビルド(出力先は一時ファイル) -->
+    <java jar="${compiler}" fork="true" failonerror="true">
+      <arg line="--compilation_level=${level}"/>
+      <arg line="--warning_level=VERBOSE"/>
+      <arg line="--define=goog.DEBUG=false"/>
+      <arg line="--define=SF2_PARSER_EXPORT=true"/>
+      <arg line="--summary_detail_level=3"/>
+      <arg line="--language_in=ECMASCRIPT5_STRICT"/>
+      <arg line="--source_map_format=V3"/>
+      <arg line="--output_wrapper='${license}(function() {%output%}).call(this); //@ sourceMappingURL=${basename}.map'"/>
+      <arg line="--js_output_file=${outfile}"/>
+      <arg line="--create_source_map=${outfile}.map"/>
+      <arg line="--manage_closure_dependencies"/>
+      <arg line="--externs=${externs}/w3c_audio.js"/>
+      <arg line="--js=${closure_primitives}"/>
+      <arg line="--js=${def}/typedarray/hybrid.js"/>
+      <arg line="${srcfiles}"/>
+      <arg line="${exportfiles}"/>
+    </java>
+  </target>
+
+  <target name="synth" depends="deps,prebuild">
+    <!-- 出力ファイル名 -->
+    <local name="basename"/>
+    <property name="basename" value="sf2synth.min.js"/>
+    <local name="outfile"/>
+    <property name="outfile" value="${bin}/${basename}"/>
+    <!-- ビルド(出力先は一時ファイル) -->
+    <java jar="${compiler}" fork="true" failonerror="true">
+      <arg line="--compilation_level=${level}"/>
+      <arg line="--warning_level=VERBOSE"/>
+      <arg line="--jscomp_error=checkTypes"/>
+      <arg line="--define=goog.DEBUG=false"/>
+      <arg line="--define=SF2_SYNTH_EXPORT=true"/>
+      <arg line="--summary_detail_level=3"/>
+      <arg line="--language_in=ECMASCRIPT5_STRICT"/>
+      <arg line="--source_map_format=V3"/>
+      <arg line="--output_wrapper='${license}(function() {%output%}).call(this); //@ sourceMappingURL=${basename}.map'"/>
+      <arg line="--js_output_file=${outfile}"/>
+      <arg line="--create_source_map=${outfile}.map"/>
+      <arg line="--manage_closure_dependencies"/>
+      <arg line="--externs=${externs}/w3c_audio.js"/>
+      <arg line="--js=${closure_primitives}"/>
+      <arg line="--js=${def}/typedarray/hybrid.js"/>
+      <arg line="${export}/synth.js"/>
+      <arg line="${srcfiles}"/>
+    </java>
+  </target>
+
+  <!-- compiler help -->
+  <target name="help">
+    <java jar="${compiler}" fork="true" failonerror="true">
+      <arg line="--help"/>
+    </java>
+  </target>
+
+  <!-- 全て作成 -->
+  <target name="all" depends="parser,synth"/>
+
+  <!--  削除 -->
+  <target name="clean">
+    <delete file="${depend}"/>
+    <delete dir="${bin}"/>
+  </target>
+
+  <!-- リビルド -->
+  <target name="rebuild" depends="clean,all"/>
+</project>
+<!-- vim: set expandtab ts=2 sw=2: -->
