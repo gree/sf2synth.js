@@ -1,4 +1,4 @@
-goog.provide('SoundFontSynthNote');
+goog.provide('SoundFont.SynthesizerNote');
 
 /**
  * @param {AudioContext} ctx
@@ -15,7 +15,7 @@ goog.provide('SoundFontSynthNote');
  * }} instrument
  * @constructor
  */
-SoundFontSynthNote = function(ctx, destination, instrument) {
+SoundFont.SynthesizerNote = function(ctx, destination, instrument) {
   /** @type {AudioContext} */
   this.ctx = ctx;
   /** @type {AudioNode} */
@@ -77,7 +77,7 @@ SoundFontSynthNote = function(ctx, destination, instrument) {
   //console.log(instrument['modAttack'], instrument['modDecay'], instrument['modSustain'], instrument['modRelease']);
 };
 
-SoundFontSynthNote.prototype.noteOn = function() {
+SoundFont.SynthesizerNote.prototype.noteOn = function() {
   /** @type {AudioContext} */
   var ctx = this.ctx;
   /** @type {{
@@ -195,7 +195,7 @@ SoundFontSynthNote.prototype.noteOn = function() {
 
 
 
-SoundFontSynthNote.prototype.noteOff = function() {
+SoundFont.SynthesizerNote.prototype.noteOff = function() {
   /** @type {{
    *   channel: number,
    *   key: number,
@@ -248,7 +248,7 @@ SoundFontSynthNote.prototype.noteOff = function() {
   //*/
 };
 
-SoundFontSynthNote.prototype.schedulePlaybackRate = function() {
+SoundFont.SynthesizerNote.prototype.schedulePlaybackRate = function() {
   var playbackRate = this.bufferSource.playbackRate;
   /** @type {number} */
   var computed = this.computedPlaybackRate;
@@ -275,7 +275,7 @@ SoundFontSynthNote.prototype.schedulePlaybackRate = function() {
 /**
  * @param {number} pitchBend
  */
-SoundFontSynthNote.prototype.updatePitchBend = function(pitchBend) {
+SoundFont.SynthesizerNote.prototype.updatePitchBend = function(pitchBend) {
   this.computedPlaybackRate = this.playbackRate * Math.pow(
     Math.pow(2, 1/12),
     (

@@ -1,6 +1,6 @@
 goog.provide('SoundFont.WebMidiLink');
 
-goog.require('SoundFontSynth');
+goog.require('SoundFont.Synthesizer');
 
 goog.scope(function() {
 
@@ -14,7 +14,7 @@ SoundFont.WebMidiLink = function() {
   this.RpnLsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   /** @type {boolean} */
   this.ready;
-  /** @type {SoundFontSynth} */
+  /** @type {SoundFont.Synthesizer} */
   this.synth;
   /** @type {function(ArrayBuffer)} */
   this.loadCallback;
@@ -69,8 +69,8 @@ SoundFont.WebMidiLink.prototype.onload = function(response) {
  * @param {Uint8Array} input
  */
 SoundFont.WebMidiLink.prototype.loadSoundFont = function(input) {
-  /** @type {SoundFontSynth} */
-  var synth = this.synth = new SoundFontSynth(input);
+  /** @type {SoundFont.Synthesizer} */
+  var synth = this.synth = new SoundFont.Synthesizer(input);
   /** @type {HTMLTableElement} */
   var table = synth.drawSynth();
 
@@ -142,7 +142,7 @@ SoundFont.WebMidiLink.prototype.setLoadCallback = function(callback) {
 SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
   /** @type {number} */
   var channel = message[0] & 0x0f;
-  /** @type {SoundFontSynth} */
+  /** @type {SoundFont.Synthesizer} */
   var synth = this.synth;
 
   switch (message[0] & 0xf0) {
