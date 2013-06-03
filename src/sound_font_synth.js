@@ -228,6 +228,15 @@ SoundFont.Synthesizer.prototype.init = function() {
   }
 };
 
+/**
+ * @param {Uint8Array} input
+ */
+SoundFont.Synthesizer.prototype.refreshInstruments = function(input) {
+  this.input = input;
+  this.parser = new SoundFont.Parser(input);
+  this.bankSet = this.createAllInstruments();
+};
+
 SoundFont.Synthesizer.prototype.createAllInstruments = function() {
   /** @type {SoundFont.Parser} */
   var parser = this.parser;
@@ -470,6 +479,9 @@ SoundFont.Synthesizer.prototype.drawSynth = function() {
           synth.programChange(channel, event.target.selectedIndex);
         }
       })(this, i), false);
+      select.selectedIndex = this.channelInstrument[i];
+    } else {
+      tableLine.querySelector('td:first-child').textContent = '[ RHYTHM TRACK ]';
     }
 
     notes = tableLine.querySelectorAll('td:nth-last-child(-n+128)');
@@ -509,6 +521,15 @@ SoundFont.Synthesizer.prototype.drawSynth = function() {
   table.appendChild(body);
 
   return table;
+};
+
+SoundFont.Synthesizer.prototype.removeSynth = function() {
+  var table = this.table;
+
+  if (table) {
+    table.parentNode.removeChild(table);
+    this.table = null;
+  }
 };
 
 /**
@@ -588,13 +609,16 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
     return;
   }
 
+  var panpot = this.channelPanpot[channel] - 64;
+  panpot /= panpot < 0 ? 64 : 63;
+
   // create note information
   instrumentKey['channel'] = channel;
   instrumentKey['key'] = key;
   instrumentKey['velocity'] = velocity;
-  instrumentKey['panpot'] = this.channelPanpot[channel];
-  instrumentKey['volume'] = this.channelVolume[channel];
-  instrumentKey['pitchBend'] = this.channelPitchBend[channel];
+  instrumentKey['panpot'] = panpot;
+  instrumentKey['volume'] = this.channelVolume[channel] / 127;
+  instrumentKey['pitchBend'] = this.channelPitchBend[channel] - 8192;
   instrumentKey['pitchBendSensitivity'] = this.channelPitchBendSensitivity[channel];
 
   // note on
@@ -651,9 +675,7 @@ SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
  */
 SoundFont.Synthesizer.prototype.programChange = function(channel, instrument) {
   if (this.table) {
-    if (channel === 9) {
-      this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:first-child').textContent = '[ RHYTHM TRACK ]';
-    } else {
+    if (channel !== 9) {
       this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:first-child > select').selectedIndex = instrument;
     }
   }
@@ -661,7 +683,6 @@ SoundFont.Synthesizer.prototype.programChange = function(channel, instrument) {
   if (channel === 9) {
     return;
   }
-
 
   this.channelInstrument[channel] = instrument;
 };
@@ -675,7 +696,7 @@ SoundFont.Synthesizer.prototype.volumeChange = function(channel, volume) {
     this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(2)').textContent = volume;
   }
 
-  this.channelVolume[channel] = volume / 127;
+  this.channelVolume[channel] = volume;
 };
 
 /**
@@ -683,16 +704,11 @@ SoundFont.Synthesizer.prototype.volumeChange = function(channel, volume) {
  * @param {number} panpot panpot(0-127).
  */
 SoundFont.Synthesizer.prototype.panpotChange = function(channel, panpot) {
-  /** @type {number} */
-  var lr = (panpot - 64);
-
-  lr /= lr < 0 ? 64 : 63;
-
   if (this.table) {
     this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(3)').textContent = panpot;
   }
 
-  this.channelPanpot[channel] = lr;
+  this.channelPanpot[channel] = panpot;
 };
 
 /**
@@ -709,15 +725,15 @@ SoundFont.Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherB
   var il;
   /** @type {Array.<SoundFont.SynthesizerNote>} */
   var currentNoteOn = this.currentNoteOn[channel];
-
-  bend -= 8192;
+  /** @type {number} */
+  var calculated = bend - 8192;
 
   if (this.table) {
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(4)').textContent = bend;
+    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(4)').textContent = calculated;
   }
 
   for (i = 0, il = currentNoteOn.length; i < il; ++i) {
-    currentNoteOn[i].updatePitchBend(bend);
+    currentNoteOn[i].updatePitchBend(calculated);
   }
 
   this.channelPitchBend[channel] = bend;

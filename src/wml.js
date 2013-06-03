@@ -18,6 +18,8 @@ SoundFont.WebMidiLink = function() {
   this.synth;
   /** @type {function(ArrayBuffer)} */
   this.loadCallback;
+  /** @type {Function} */
+  this.messageHandler = this.onmessage.bind(this);
 
   window.addEventListener('DOMContentLoaded', function() {
     this.ready = true;
@@ -70,16 +72,18 @@ SoundFont.WebMidiLink.prototype.onload = function(response) {
  */
 SoundFont.WebMidiLink.prototype.loadSoundFont = function(input) {
   /** @type {SoundFont.Synthesizer} */
-  var synth = this.synth = new SoundFont.Synthesizer(input);
-  /** @type {HTMLTableElement} */
-  var table = synth.drawSynth();
+  var synth;
 
-  synth.init();
-  synth.start();
-
-  document.body.appendChild(table);
-
-  window.addEventListener('message', this.onmessage.bind(this), false);
+  if (!this.synth) {
+    synth = this.synth = new SoundFont.Synthesizer(input);
+    document.body.appendChild(synth.drawSynth());
+    synth.init();
+    synth.start();
+    window.addEventListener('message', this.messageHandler, false);
+  } else {
+    synth = this.synth;
+    synth.refreshInstruments(input);
+  }
 
   // link ready
   if (window.opener) {
