@@ -10,6 +10,10 @@ if (SF2_SYNTH_EXPORT) {
     SoundFont.WebMidiLink.prototype.setup
   );
   goog.exportSymbol(
+    "SoundFont.WebMidiLink.prototype.loadSoundFont",
+    SoundFont.WebMidiLink.prototype.loadSoundFont
+  );
+  goog.exportSymbol(
     "SoundFont.WebMidiLink.prototype.setLoadCallback",
     SoundFont.WebMidiLink.prototype.setLoadCallback
   );
