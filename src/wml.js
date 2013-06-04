@@ -20,6 +20,8 @@ SoundFont.WebMidiLink = function() {
   this.loadCallback;
   /** @type {Function} */
   this.messageHandler = this.onmessage.bind(this);
+  /** @type {XMLHttpRequest} */
+  this.xhr;
 
   window.addEventListener('DOMContentLoaded', function() {
     this.ready = true;
@@ -39,8 +41,11 @@ SoundFont.WebMidiLink.prototype.setup = function(url) {
 
 SoundFont.WebMidiLink.prototype.load = function(url) {
   /** @type {XMLHttpRequest} */
-  var xhr = new XMLHttpRequest();
+  var xhr;
 
+  this.cancelLoading();
+
+  xhr = this.xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.responseType = 'arraybuffer';
 
@@ -52,9 +57,18 @@ SoundFont.WebMidiLink.prototype.load = function(url) {
     if (typeof this.loadCallback === 'function') {
       this.loadCallback(xhr.response);
     }
+
+    this.xhr = null;
   }.bind(this), false);
 
   xhr.send();
+};
+
+SoundFont.WebMidiLink.prototype.cancelLoading = function() {
+  if (this.xhr) {
+    this.xhr.abort();
+    this.xhr = null;
+  }
 };
 
 /**
@@ -73,6 +87,8 @@ SoundFont.WebMidiLink.prototype.onload = function(response) {
 SoundFont.WebMidiLink.prototype.loadSoundFont = function(input) {
   /** @type {SoundFont.Synthesizer} */
   var synth;
+
+  this.cancelLoading();
 
   if (!this.synth) {
     synth = this.synth = new SoundFont.Synthesizer(input);
