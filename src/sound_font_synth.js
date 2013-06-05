@@ -300,7 +300,11 @@ SoundFont.Synthesizer.prototype.createNoteInfo = function(parser, info, preset) 
   /** @type {Object} */
   var sampleHeader;
   /** @type {number} */
+  var volDelay;
+  /** @type {number} */
   var volAttack;
+  /** @type {number} */
+  var volHold;
   /** @type {number} */
   var volDecay;
   /** @type {number} */
@@ -308,7 +312,11 @@ SoundFont.Synthesizer.prototype.createNoteInfo = function(parser, info, preset) 
   /** @type {number} */
   var volRelease;
   /** @type {number} */
+  var modDelay;
+  /** @type {number} */
   var modAttack;
+  /** @type {number} */
+  var modHold;
   /** @type {number} */
   var modDecay;
   /** @type {number} */
@@ -330,11 +338,15 @@ SoundFont.Synthesizer.prototype.createNoteInfo = function(parser, info, preset) 
     return;
   }
 
+  volDelay   = this.getModGenAmount(generator, 'delayVolEnv',   -12000);
   volAttack  = this.getModGenAmount(generator, 'attackVolEnv',  -12000);
+  volHold    = this.getModGenAmount(generator, 'holdVolEnv',    -12000);
   volDecay   = this.getModGenAmount(generator, 'decayVolEnv',   -12000);
   volSustain = this.getModGenAmount(generator, 'sustainVolEnv');
   volRelease = this.getModGenAmount(generator, 'releaseVolEnv', -12000);
+  modDelay   = this.getModGenAmount(generator, 'delayModEnv',   -12000);
   modAttack  = this.getModGenAmount(generator, 'attackModEnv',  -12000);
+  modHold    = this.getModGenAmount(generator, 'holdModEnv',    -12000);
   modDecay   = this.getModGenAmount(generator, 'decayModEnv',   -12000);
   modSustain = this.getModGenAmount(generator, 'sustainModEnv');
   modRelease = this.getModGenAmount(generator, 'releaseModEnv', -12000);
@@ -384,11 +396,15 @@ SoundFont.Synthesizer.prototype.createNoteInfo = function(parser, info, preset) 
           this.getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
           this.getModGenAmount(generator, 'endloopAddrsOffset')
         ),
+      'volDelay':   Math.pow(2, volDelay / 1200),
       'volAttack':  Math.pow(2, volAttack / 1200),
+      'volHold':    Math.pow(2, volHold / 1200),
       'volDecay':   Math.pow(2, volDecay / 1200),
       'volSustain': volSustain / 1000,
       'volRelease': Math.pow(2, volRelease / 1200),
+      'modDelay':   Math.pow(2, modDelay / 1200),
       'modAttack':  Math.pow(2, modAttack / 1200),
+      'modHold':    Math.pow(2, modHold / 1200),
       'modDecay':   Math.pow(2, modDecay / 1200),
       'modSustain': modSustain / 1000,
       'modRelease': Math.pow(2, modRelease / 1200),

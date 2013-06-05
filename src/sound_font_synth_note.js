@@ -74,7 +74,6 @@ SoundFont.SynthesizerNote = function(ctx, destination, instrument) {
   /** @type {AudioGainNode} */
   this.gainOutput;
 
-  //console.log(instrument['modAttack'], instrument['modDecay'], instrument['modSustain'], instrument['modRelease']);
 };
 
 SoundFont.SynthesizerNote.prototype.noteOn = function() {
@@ -110,13 +109,21 @@ SoundFont.SynthesizerNote.prototype.noteOn = function() {
   /** @type {number} */
   var now = this.ctx.currentTime;
   /** @type {number} */
-  var volAttack = now + instrument['volAttack'];
+  var volDelay = now + instrument['volDelay'];
   /** @type {number} */
-  var modAttack = now + instrument['modAttack'];
+  var modDelay = now + instrument['modDelay'];
   /** @type {number} */
-  var volDecay = volAttack + instrument['volDecay'];
+  var volAttack = volDelay + instrument['volAttack'];
   /** @type {number} */
-  var modDecay = modAttack + instrument['modDecay'];
+  var modAttack = volDelay + instrument['modAttack'];
+  /** @type {number} */
+  var volHold = volAttack + instrument['volHold'];
+  /** @type {number} */
+  var modHold = modAttack + instrument['modHold'];
+  /** @type {number} */
+  var volDecay = volHold + instrument['volDecay'];
+  /** @type {number} */
+  var modDecay = modHold + instrument['modDecay'];
   /** @type {number} */
   var loopStart = instrument['loopStart'] / this.sampleRate;
   /** @type {number} */
@@ -161,18 +168,25 @@ SoundFont.SynthesizerNote.prototype.noteOn = function() {
   );
 
   //---------------------------------------------------------------------------
-  // Attack, Decay, Sustain
+  // Delay, Attack, Hold, Decay, Sustain
   //---------------------------------------------------------------------------
+
+  // volume envelope
   outputGain.setValueAtTime(0, now);
-  outputGain.linearRampToValueAtTime(this.volume * (this.velocity / 127), volAttack);
+  outputGain.setValueAtTime(0, volDelay);
+  outputGain.setTargetValueAtTime(this.volume * (this.velocity / 127), volDelay, instrument['volAttack']);
+  outputGain.setValueAtTime(this.volume * (this.velocity / 127), volHold);
   outputGain.linearRampToValueAtTime(this.volume * (1 - instrument['volSustain']), volDecay);
 
+  // modulation envelope
   filter.Q.setValueAtTime(instrument['initialFilterQ'] * Math.pow(10, 200), now);
   baseFreq = amountToFreq(instrument['initialFilterFc']);
   peekFreq = amountToFreq(instrument['initialFilterFc'] + instrument['modEnvToFilterFc']);
   sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - instrument['modSustain']);
   filter.frequency.setValueAtTime(baseFreq, now);
-  filter.frequency.linearRampToValueAtTime(peekFreq, modAttack);
+  filter.frequency.setValueAtTime(baseFreq, modDelay);
+  filter.frequency.setTargetValueAtTime(peekFreq, modDelay, instrument['modAttack']);
+  filter.frequency.setValueAtTime(peekFreq, modHold);
   filter.frequency.linearRampToValueAtTime(sustainFreq, modDecay);
 
   /**
