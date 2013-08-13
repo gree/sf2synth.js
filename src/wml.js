@@ -9,6 +9,10 @@ goog.scope(function() {
  */
 SoundFont.WebMidiLink = function() {
   /** @type {Array.<number>} */
+  this.NrpnMsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  /** @type {Array.<number>} */
+  this.NrpnLsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  /** @type {Array.<number>} */
   this.RpnMsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   /** @type {Array.<number>} */
   this.RpnLsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -22,6 +26,8 @@ SoundFont.WebMidiLink = function() {
   this.messageHandler = this.onmessage.bind(this);
   /** @type {XMLHttpRequest} */
   this.xhr;
+  /** @type {boolean} */
+  this.rpnMode = true;
 
   window.addEventListener('DOMContentLoaded', function() {
     this.ready = true;
@@ -62,6 +68,14 @@ SoundFont.WebMidiLink.prototype.load = function(url) {
   }.bind(this), false);
 
   xhr.send();
+};
+
+SoundFont.WebMidiLink.prototype.setReverb = function(reverb) {
+  this.synth.setReverb(reverb);
+};
+
+SoundFont.WebMidiLink.prototype.loadIR = function(data) {
+  this.synth.loadIR(data);
 };
 
 SoundFont.WebMidiLink.prototype.cancelLoading = function() {
@@ -178,16 +192,65 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       break;
     case 0xB0: // Control Change: Bn cc dd
       switch (message[1]) {
-        case 0x06: // Data Entry: Bn 06 dd
-          switch (this.RpnMsb[channel]) {
-            case 0:
-              switch (this.RpnLsb[channel]) {
-                case 0: // Pitch Bend Sensitivity
-                  synth.pitchBendSensitivity(channel, message[2]);
-                  break;
-              }
-              break;
+        case 0x06: // Data Entry(MSB): Bn 06 dd
+          if (this.rpnMode) {
+            // RPN
+            switch (this.RpnMsb[channel]) {
+              case 0:
+                switch (this.RpnLsb[channel]) {
+                  case 0: // Pitch Bend Sensitivity
+                    synth.pitchBendSensitivity(channel, message[2]);
+                    break;
+                  case 1:
+                    //console.log("fine");
+                    break;
+                  case 2:
+                    //console.log("coarse");
+                    break;
+                  default:
+                    //console.log("default");
+                    break;
+                }
+                break;
+              default:
+                //console.log("default:", this.RpnMsb[channel], this.RpnLsb[channel]);
+                break;
+            }
+          } else {
+            // NRPN
+            switch (this.NrpnMsb[channel]) {
+              case 26: // Drum Instrument Level
+                synth.drumInstrumentLevel(this.NrpnLsb[channel], message[2]);
+                break;
+              default:
+                //console.log("default:", this.RpnMsb[channel], this.RpnLsb[channel]);
+                break;
+            }
           }
+          break;
+        case 0x26: // Data Entry(LSB): Bn 26 dd
+          if (this.rpnMode) {
+            // RPN
+            switch (this.RpnMsb[channel]) {
+              case 0:
+                switch (this.RpnLsb[channel]) {
+                  case 0: // Pitch Bend Sensitivity
+                    synth.pitchBendSensitivity(
+                      channel,
+                      synth.getPitchBendSensitivity(channel) + message[2] / 100
+                    );
+                    break;
+                  case 1:
+                    //console.log("fine");
+                    break;
+                  case 2:
+                    //console.log("coarse");
+                    break;
+                }
+                break;
+            }
+          }
+          // NRPN で LSB が必要なものは今のところない
           break;
         case 0x07: // Volume Change: Bn 07 dd
           synth.volumeChange(channel, message[2]);
@@ -204,14 +267,40 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x20: // BankSelect
           //console.log("bankselect:", channel, message[2]);
           break;
-        case 0x64: // RPN MSB
+        case 0x60: //
+          //console.log(60);
+          break;
+        case 0x61: //
+          //console.log(61);
+          break;
+        case 0x62: // NRPN LSB
+          this.rpnMode = false;
+          this.NrpnLsb[channel] = message[2];
+          break;
+        case 0x63: // NRPN MSB
+          this.rpnMode = false;
+          this.NrpnMsb[channel] = message[2];
+          break;
+        case 0x64: // RPN LSB
+          this.rpnMode = true;
+          this.RpnLsb[channel] = message[2];
+          break;
+        case 0x65: // RPN MSB
+          this.rpnMode = true;
           this.RpnMsb[channel] = message[2];
           break;
-        case 0x65: // RPN LSB
-          this.RpnLsb[channel] = message[2];
+        case 0x40: // Hold
+          synth.hold(channel, message[2]);
+          break;
+        case 0x0b: // Expression
+          synth.expression(channel, message[2]);
+          break;
+        case 0x4a: // ReleaseTime
+          synth.releaseTime(channel, message[2]);
           break;
         default:
         // not supported
+          break;
       }
       break;
     case 0xC0: // Program Change: Cn pp
