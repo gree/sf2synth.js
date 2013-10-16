@@ -40,6 +40,9 @@ SoundFont.Synthesizer = function(input) {
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   this.channelPitchBendSensitivity =
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  /** @type {Array.<number>} */
+  this.expression =
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   /** @type {Array.<Array.<SoundFont.SynthesizerNote>>} */
   this.currentNoteOn = [
     [], [], [], [], [], [], [], [],
@@ -49,6 +52,15 @@ SoundFont.Synthesizer = function(input) {
   this.baseVolume = 1 / 0x8000;
   /** @type {number} */
   this.masterVolume = 16384;
+  
+  /** @type {Array} */
+  this.bankMsb = 
+    [0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0];
+  /** @type {Array} */
+  this.bankLsb = 
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  /** @type {boolean} */
+  this.isXG = false;
 
   /** @type {HTMLTableElement} */
   this.table;
@@ -223,8 +235,11 @@ SoundFont.Synthesizer.prototype.init = function() {
     this.programChange(i, i);
     this.volumeChange(i, 0x64);
     this.panpotChange(i, 0x40);
+    this.Expression(i, 0x7F);
     this.pitchBend(i, 0x00, 0x40); // 8192
     this.pitchBendSensitivity(i, 2);
+    this.bankSelectMsb(i, 0x00);
+    this.bankSelectLsb(i, 0x00);
   }
 };
 
@@ -567,8 +582,15 @@ SoundFont.Synthesizer.prototype.createTableLine = function(array, isTitleLine) {
  * @param {number} velocity 強さ.
  */
 SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
+  var bankNum = bankNum = this.bankMsb[channel];
+  if (this.isXG) {
+    if (channel == 9) bankNum = 127;
+  }else{
+    if (channel == 9) bankNum = 128;
+  }
+  //console.log(this.bank, this.bankSelect);
   /** @type {Object} */
-  var bank = this.bankSet[channel === 9 ? 128 : this.bank];
+  var bank = this.bankSet[bankNum];
   /** @type {Object} */
   var instrument = bank[this.channelInstrument[channel]];
   /** @type {Object} */
@@ -585,23 +607,29 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   }
 
   if (!instrument) {
-    // TODO
-    goog.global.console.warn(
-      "instrument not found: bank=%s instrument=%s channel=%s",
-      channel === 9 ? 128 : this.bank,
-      this.channelInstrument[channel],
-      channel
-    );
-    return;
+      instrument = bank[bankNum];
+/*
+      // TODO
+      goog.global.console.warn(
+        "instrument not found: bank=%s instrument=%s channel=%s",
+        bankNum,
+        this.channelInstrument[channel],
+        channel
+      );
+      return;
+*/
   }
-
-  instrumentKey = instrument[key];
+  try{
+    instrumentKey = instrument[key];
+  }catch(e){
+    instrumentKey = bank[0];
+  }
 
   if (!(instrumentKey)) {
     // TODO
     goog.global.console.warn(
       "instrument not found: bank=%s instrument=%s channel=%s key=%s",
-      channel === 9 ? 128 : this.bank,
+      bankNum,
       this.channelInstrument[channel],
       channel,
       key
@@ -617,7 +645,7 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   instrumentKey['key'] = key;
   instrumentKey['velocity'] = velocity;
   instrumentKey['panpot'] = panpot;
-  instrumentKey['volume'] = this.channelVolume[channel] / 127;
+  instrumentKey['volume'] = (this.channelVolume[channel] / 127) * (this.expression[channel] / 127);
   instrumentKey['pitchBend'] = this.channelPitchBend[channel] - 8192;
   instrumentKey['pitchBendSensitivity'] = this.channelPitchBendSensitivity[channel];
 
@@ -633,8 +661,14 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
  * @param {number} velocity 強さ.
  */
 SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
+  var bankNum = this.bankMsb[channel];
+  if (this.isXG) {
+    if (channel == 9) bankNum = 127;
+  }else{
+    if (channel == 9) bankNum = 128;
+  }
   /** @type {Object} */
-  var bank = this.bankSet[channel === 9 ? 128 : this.bank];
+  var bank = this.bankSet[bankNum];
   /** @type {Object} */
   var instrument = bank[this.channelInstrument[channel]];
   /** @type {number} */
@@ -680,10 +714,9 @@ SoundFont.Synthesizer.prototype.programChange = function(channel, instrument) {
     }
   }
   // リズムトラックは無視する
-  if (channel === 9) {
-    return;
-  }
-
+//  if (channel === 9) {
+//    return;
+//  }
   this.channelInstrument[channel] = instrument;
 };
 
@@ -740,6 +773,14 @@ SoundFont.Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherB
 };
 
 /**
+ * @param {number} channel expression を変更するチャンネル.
+ * @param {number} depth depth(0-127).
+ */
+SoundFont.Synthesizer.prototype.Expression = function(channel, depth) {
+  this.expression[channel] = depth;
+};
+
+/**
  * @param {number} channel pitch bend sensitivity を変更するチャンネル.
  * @param {number} sensitivity
  */
@@ -770,3 +811,18 @@ SoundFont.Synthesizer.prototype.resetAllControl = function(channel) {
   this.pitchBend(channel, 0x00, 0x40); // 8192
 };
 
+/**
+ * @param {number} channel チャンネルのバンクセレクトMSB
+ * @param {number} value 値
+ */
+SoundFont.Synthesizer.prototype.bankSelectMsb = function(channel, value) {
+  this.bankMsb[channel] = value;
+};
+
+/**
+ * @param {number} channel チャンネルのバンクセレクトLSB
+ * @param {number} value 値
+ */
+SoundFont.Synthesizer.prototype.bankSelectLsb = function(channel, value) {
+  this.bankLsb[channel] = value;
+};

@@ -53,6 +53,17 @@ SoundFont.WebMidiLink.prototype.load = function(url) {
       this.loadCallback(xhr.response);
     }
   }.bind(this), false);
+  
+  xhr.addEventListener('progress', function(ev){
+    if (ev.lengthComputable) {
+      var percentComplete = ev.loaded / ev.total;
+      if (document.getElementById('message')){
+        document.getElementById('message').firstChild.nodeValue = 'Now Loading...'+percentComplete+'%';
+      }
+    } else {
+      // Unable to compute progress information since the total size is unknown
+    }
+  }, false);
 
   xhr.send();
 };
@@ -162,6 +173,14 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       break;
     case 0xB0: // Control Change: Bn cc dd
       switch (message[1]) {
+        case 0x00: // Bank Select MSB: Bn 00 dd
+          //console.log("BankSelect MSB:", channel, message[2]);
+          synth.bankSelectMsb(channel,message[2]);
+          break;
+        case 0x01: // Modulation
+          // TODO
+          // synth.modulation(channel, message[2]);
+          break;
         case 0x06: // Data Entry: Bn 06 dd
           switch (this.RpnMsb[channel]) {
             case 0:
@@ -179,14 +198,25 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x0A: // Panpot Change: Bn 0A dd
           synth.panpotChange(channel, message[2]);
           break;
+        case 0x0B: // Expression: Bn 0B dd
+          synth.Expression(channel,message[2]);
+          break;
+        case 0x20: // BankSelect LSB: Bn 00 dd
+          //console.log("BankSelect LSB:", channel, message[2]);
+          synth.bankSelectLsb(channel, message[2]);
+          break;
+        case 0x40: // Hold Pedal: Bn 00 dd
+          // ホールドペダルは0以外有効なのでbooleanで渡す
+          //synth.holdPedal(channel, message[2] !== 0);
+          break;
+        case 0x41: // Portamento : Bn 00 dd
+          //synth.portamento(channel, message[2]);
+          break;
         case 0x78: // All Sound Off: Bn 78 00
           synth.allSoundOff(channel);
           break;
         case 0x79: // Reset All Control: Bn 79 00
           synth.resetAllControl(channel);
-          break;
-        case 0x20: // BankSelect
-          //console.log("bankselect:", channel, message[2]);
           break;
         case 0x64: // RPN MSB
           this.RpnMsb[channel] = message[2];
@@ -205,13 +235,13 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       synth.pitchBend(channel, message[1], message[2]);
       break;
     case 0xf0: // System Exclusive Message
+      // console.log(message[2].toString(16),message[3].toString(16),message[4].toString(16),message[5].toString(16),message[6].toString(16),message[7].toString(16));
       // ID number
       switch (message[1]) {
         case 0x7e: // non-realtime
           // TODO
           break;
         case 0x7f: // realtime
-          var device = message[2];
           // sub ID 1
           switch (message[3]) {
             case 0x04: // device control
@@ -223,6 +253,24 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
               }
               break;
           }
+          break;
+      }
+      // Vendor
+      switch (message[2]) {
+        case 0x43: // Yamaha XG
+          if (message[7] == 0x7E) {
+             // XG Reset (F0 43 10 4C 00 00 7E 00 F7)
+             synth.isXG = true;
+          }
+          break;
+        case 0x41: // Roland GS / TG300B Mode
+          // console.log('isGS');
+          // TODO
+          synth.isGS = true;
+          break;
+        case 0x7e:
+          // GM Reset
+          // TODO
           break;
       }
       break;
