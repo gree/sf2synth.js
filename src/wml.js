@@ -218,6 +218,9 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x79: // Reset All Control: Bn 79 00
           synth.resetAllControl(channel);
           break;
+        case 0x7B: // All Note Off
+          synth.allNoteOff(channel);
+          break;
         case 0x64: // RPN MSB
           this.RpnMsb[channel] = message[2];
           break;
@@ -247,7 +250,7 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
             case 0x04: // device control
               // sub ID 2
               switch (message[4]) {
-                case 0x01: // master volume
+                case 0x01: // master volume (7F 7F 04 01 00 [value] F7)
                   synth.setMasterVolume(message[5] + (message[6] << 7));
                   break;
               }
@@ -258,19 +261,36 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       // Vendor
       switch (message[2]) {
         case 0x43: // Yamaha XG
-          if (message[7] == 0x7E) {
-             // XG Reset (F0 43 10 4C 00 00 7E 00 F7)
-             synth.isXG = true;
+          switch (message[7]) {
+            case 0x04:
+              // XG Master Volume (FO 43 10 4C 00 00 04 [value] F7)
+              synth.setMasterVolume(message[8] << 7 );
+            break;
+            case 0x7E:
+              // XG Reset (F0 43 10 4C 00 00 7E 00 F7)
+              synth.init();
+              synth.isXG = true;
+            break;
           }
           break;
         case 0x41: // Roland GS / TG300B Mode
-          // console.log('isGS');
           // TODO
-          synth.isGS = true;
+          switch (message[8]) {
+            case 0x04:
+              // GS Master Volume (F0 41 10 42 12 40 00 04 [value] 58 F7)
+              synth.setMasterVolume(message[9] << 7);
+              break;
+            case 0x7F:
+              // GS Reset (F0 41 10 42 12 40 00 7F 00 41 F7)
+              synth.init();
+              synth.isGS = true;
+              break;
+          }
           break;
         case 0x7e:
           // GM Reset
           // TODO
+          synth.init();
           break;
       }
       break;
