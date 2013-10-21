@@ -239,38 +239,32 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       break;
     case 0xf0: // System Exclusive Message
       // console.log(message[2].toString(16),message[3].toString(16),message[4].toString(16),message[5].toString(16),message[6].toString(16),message[7].toString(16));
-      // ID number
-      switch (message[1]) {
-        case 0x7e: // non-realtime
-          // TODO
-          break;
-        case 0x7f: // realtime
-          // sub ID 1
-          switch (message[3]) {
-            case 0x04: // device control
-              // sub ID 2
-              switch (message[4]) {
-                case 0x01: // master volume (7F 7F 04 01 00 [value] F7)
-                  synth.setMasterVolume(message[5] + (message[6] << 7));
-                  break;
-              }
-              break;
-          }
-          break;
-      }
-      // Vendor
       switch (message[2]) {
         case 0x43: // Yamaha XG
-          switch (message[7]) {
-            case 0x04:
-              // XG Master Volume (FO 43 10 4C 00 00 04 [value] F7)
-              synth.setMasterVolume(message[8] << 7 );
-            break;
-            case 0x7E:
-              // XG Reset (F0 43 10 4C 00 00 7E 00 F7)
-              synth.init();
-              synth.isXG = true;
-            break;
+          switch (message[5]) {
+            case 0x00:
+              switch (message[7]) {
+                case 0x04:
+                  // XG Master Volume (FO 43 10 4C 00 00 04 [value] F7)
+                  synth.setMasterVolume(message[8] << 7 );
+                break;
+                case 0x7E:
+                  // XG Reset (F0 43 10 4C 00 00 7E 00 F7)
+                  synth.init();
+                  synth.isXG = true;
+                break;
+              }
+              break;
+            case 0x20:
+              // TODO:
+              // Reverb Effect (F0 43 10 4C 02 01 00 01 [effect type] F7)
+              // Chorus Effect (F0 43 10 4C 02 01 00 43 [effect type] F7)
+              // Variation Effect (F0 43 10 4C 02 01 00 05 [effect type] F7)
+              break;
+            case 0x08:
+              // Drum mode (F0 43 10 4C 08 [channel] 07 [mode] F7)
+              synth.bankSelectMsb(message[6],127);
+              break;
           }
           break;
         case 0x41: // Roland GS / TG300B Mode
@@ -287,11 +281,23 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
               break;
           }
           break;
-        case 0x7e:
-          // GM Reset
+        case 0x7e: // GM Reset (F0 7E 7F 09 01 F7)
           // TODO
           synth.init();
           break;
+        case 0x7f: // GM Command
+          // sub ID 1
+          switch (message[3]) {
+            case 0x04: // device control
+              // sub ID 2
+              switch (message[4]) {
+                case 0x01: // master volume (F0 7F 7F 04 01 00 [value] F7)
+                  synth.setMasterVolume(message[5] + (message[6] << 7));
+                  break;
+              }
+              break;
+          }
+        break;
       }
       break;
     default: // not supported
