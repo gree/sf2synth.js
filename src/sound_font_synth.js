@@ -43,6 +43,9 @@ SoundFont.Synthesizer = function(input) {
   /** @type {Array.<number>} */
   this.expression =
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  /** @type {Array.<number>} */
+  this.reverb =
+    [40, 40, 40, 40, 40, 40, 40, 40, 40, 40 ,40, 40, 40, 40, 40, 40];
   /** @type {Array.<Array.<SoundFont.SynthesizerNote>>} */
   this.currentNoteOn = [
     [], [], [], [], [], [], [], [],
@@ -247,6 +250,7 @@ SoundFont.Synthesizer.prototype.init = function() {
     this.pitchBendSensitivity(i, 2);
     this.bankSelectMsb(i, i==9 ? 0x7F : 0x00);
     this.bankSelectLsb(i, 0x00);
+    this.reverbSend(i, 0x28);
     this.allNoteOff(i);
   }
 };
@@ -593,16 +597,15 @@ SoundFont.Synthesizer.prototype.createTableLine = function(array, isTitleLine) {
 SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   var bankNum = this.bankMsb[channel];
   if (this.isXG) {
-    // XG音源のデフォルトの音はバンク8に格納されている？
-    bankNum = this.bankMsb[channel] === 0 ? 8 : this.bankMsb[channel];
-    if (this.bankLsb[channel] !== 0 && this.bankMsb[channel] !== 0 && this.bankMsb[channel] !== 64 && this.bankMsb[channel] !== 126 && this.bankMsb[channel] !== 127){
-      // XG音源は、MSB→LSBの優先順でバンクセレクトをする。
-      // Bank Select MSB #0 (Voice Type: Normal)
-      // Bank Select MSB #64 (Voice Type: SFX)
-      // Bank Select MSB #126 (Voice Type: Drum)
-      // Bank Select MSB #127 (Voice Type: Drum)
+    // XG音源は、MSB→LSBの優先順でバンクセレクトをする。SoundFontではSFXがバンク125に入っているため小細工
+    // Bank Select MSB #0 (Voice Type: Normal)
+    // Bank Select MSB #64 (Voice Type: SFX)
+    // Bank Select MSB #126 (Voice Type: Drum)
+    // Bank Select MSB #127 (Voice Type: Drum)
+    if (this.bankMsb[channel] === 64){
+      bankNum = 125;
+    }else if (this.bankLsb[channel] !== 0 && this.bankMsb[channel] !== 0 && this.bankMsb[channel] !== 126 && this.bankMsb[channel] !== 127){
       bankNum = this.bankLsb[channel];
-      // bankNum = 0;
     }
   }else if (!this.isGS){
     bankNum = 0;
@@ -611,40 +614,38 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   
   //console.log(this.bank, this.bankSelect);
   /** @type {Object} */
-  var bank = this.bankSet[bankNum] ? this.bankSet[bankNum] : this.bankSet[0];
+  var bank = this.bankSet[bankNum] ? this.bankSet[bankNum] : this.bankSet[channel == 9 ? bankNum : 0];
   /** @type {Object} */
-  var instrument = bank[this.channelInstrument[channel]];
+  var instrument = bank[this.channelInstrument[channel]] ? bank[this.channelInstrument[channel]] : this.bankSet[0][this.channelInstrument[channel]];
   /** @type {Object} */
   var instrumentKey;
   /** @type {SoundFont.SynthesizerNote} */
   var note;
 
   if (this.table) {
-    this.table.querySelector(
+    var element = this.table.querySelector(
       'tbody > ' +
         'tr:nth-child(' + (channel+1) + ') > ' +
         'td:nth-child(' + (SoundFont.Synthesizer.TableHeader.length+key+1) + ')'
-    ).classList.add('note-on');
+    );
+    element.classList.add('note-on');
+    element.style.opacity = velocity / 127; // 強弱をつける
+  }
+  
+  if ((bankNum === 127 || bankNum === 128) && (key === 42 || key === 44) ){
+    // ドラムパートの時にハイハットを閉じる
+    this.noteOff(channel, 46, 0);
   }
 
   if (!instrument) {
-    // バンク内に音色が存在しない場合バンク0を選択（ドラムパートは除く）
-    if (channel !== 9){
-      bank = this.bankSet[0];
-    }else{
-      bank = this.bankSet[127];
-    }
-    instrument = bank[this.channelInstrument[channel]] ? bank[this.channelInstrument[channel]] : bank[0][0];
-    if (!instrument) {
-      // バンク0にも音がない場合はさすがに警告を出す
-      goog.global.console.warn(
-        "instrument not found: bank=%s instrument=%s channel=%s",
-        bankNum,
-        this.channelInstrument[channel],
-        channel
-      );
-      return;
-    }
+    // バンク0にも音がない場合はさすがに警告を出す
+    goog.global.console.warn(
+      "instrument not found: bank=%s instrument=%s channel=%s",
+      bankNum,
+      this.channelInstrument[channel],
+      channel
+    );
+    return;
   }
 
   instrumentKey = instrument[key];
@@ -672,6 +673,7 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   instrumentKey['volume'] = (this.channelVolume[channel] / 127) * (this.expression[channel] / 127);
   instrumentKey['pitchBend'] = this.channelPitchBend[channel] - 8192;
   instrumentKey['pitchBendSensitivity'] = this.channelPitchBendSensitivity[channel];
+  instrumentKey['reverb'] = this.reverb[channel]
 
   // note on
   note = new SoundFont.SynthesizerNote(this.ctx, this.gainMaster, instrumentKey);
@@ -685,22 +687,11 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
  * @param {number} velocity 強さ.
  */
 SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
-  var bankNum = this.bankMsb[channel];
-  if (this.isXG) {
-    bankNum = this.bankMsb[channel] === 0 ? 8 : this.bankMsb[channel];
-    if (this.bankLsb[channel] !== 0 && this.bankMsb[channel] !== 0 && this.bankMsb[channel] !== 64 && this.bankMsb[channel] !== 126 && this.bankMsb[channel] !== 127){
-      bankNum = this.bankLsb[channel];
-      // bankNum = 0;
-    }
-  }else{
-    bankNum = 0;
-  }
-  if (channel == 9) bankNum = this.isXG ? 127 : 128;
   //console.log(this.bank, this.bankSelect);
   /** @type {Object} */
-  var bank = this.bankSet[bankNum] ? this.bankSet[bankNum] : this.bankSet[0];
+  var bank = this.bankSet[channel == 9 ? 127 : 0]; // 音を鳴らすわけではないのでいい加減だ・・・
   /** @type {Object} */
-  var instrument = bank[this.channelInstrument[channel]];
+  var instrument = bank[this.channelInstrument[channel]] ? bank[this.channelInstrument[channel]] :bank[0][0];
   /** @type {number} */
   var i;
   /** @type {number} */
@@ -709,23 +700,15 @@ SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
   var currentNoteOn = this.currentNoteOn[channel];
   /** @type {SoundFont.SynthesizerNote} */
   var note;
-  
-  if (!instrument) {
-    // バンク内に音色が存在しない場合バンク0を選択（ドラムパートは除く）
-    if (channel !== 9){
-      bank = this.bankSet[0];
-    }else{
-      bank = this.bankSet[128];
-    }
-    instrument = bank[this.channelInstrument[channel]] ? bank[this.channelInstrument[channel]] : bank[0][0];
-  }
 
   if (this.table) {
-    this.table.querySelector(
+    var element = this.table.querySelector(
       'tbody > ' +
-      'tr:nth-child(' + (channel+1) + ') > ' +
-      'td:nth-child(' + (key+SoundFont.Synthesizer.TableHeader.length+1) + ')'
-    ).classList.remove('note-on');
+        'tr:nth-child(' + (channel+1) + ') > ' +
+        'td:nth-child(' + (SoundFont.Synthesizer.TableHeader.length+key+1) + ')'
+    );
+    element.classList.remove('note-on');
+    element.style.opacity = 1;
   }
 
   if (!instrument) {
@@ -879,6 +862,13 @@ SoundFont.Synthesizer.prototype.bankSelectMsb = function(channel, value) {
  */
 SoundFont.Synthesizer.prototype.bankSelectLsb = function(channel, value) {
   this.bankLsb[channel] = value;
+};
+/**
+ * @param {number} channel チャンネルのリバーブエフェクト量
+ * @param {number} value 値
+ */
+SoundFont.Synthesizer.prototype.reverbSend = function(channel, value) {
+  this.reverb[channel] = value;
 };
 
 Array.prototype.in_array = function(val) {

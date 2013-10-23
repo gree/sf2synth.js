@@ -201,16 +201,25 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x0B: // Expression: Bn 0B dd
           synth.Expression(channel,message[2]);
           break;
-        case 0x20: // BankSelect LSB: Bn 00 dd
+        case 0x20: // BankSelect LSB: Bn 20 dd
           //console.log("BankSelect LSB:", channel, message[2]);
           synth.bankSelectLsb(channel, message[2]);
           break;
-        case 0x40: // Hold Pedal: Bn 00 dd
+        case 0x40: // Hold Pedal: Bn 40 dd
           // ホールドペダルは0以外有効なのでbooleanで渡す
           //synth.holdPedal(channel, message[2] !== 0);
           break;
-        case 0x41: // Portamento : Bn 00 dd
+        case 0x41: // Portamento : Bn 41 dd
           //synth.portamento(channel, message[2]);
+          break;
+        case 0x5B: // Reverb : Bn 5B dd
+          synth.reverbSend(channel, message[2]);
+          break;
+        case 0x64: // RPN MSB
+          this.RpnMsb[channel] = message[2];
+          break;
+        case 0x65: // RPN LSB
+          this.RpnLsb[channel] = message[2];
           break;
         case 0x78: // All Sound Off: Bn 78 00
           synth.allSoundOff(channel);
@@ -221,12 +230,7 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x7B: // All Note Off
           synth.allNoteOff(channel);
           break;
-        case 0x64: // RPN MSB
-          this.RpnMsb[channel] = message[2];
-          break;
-        case 0x65: // RPN LSB
-          this.RpnLsb[channel] = message[2];
-          break;
+        
         default:
         // not supported
       }
