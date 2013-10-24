@@ -53,6 +53,17 @@ SoundFont.WebMidiLink.prototype.load = function(url) {
       this.loadCallback(xhr.response);
     }
   }.bind(this), false);
+  
+  xhr.addEventListener('progress', function(ev){
+    if (ev.lengthComputable) {
+      var percentComplete = ev.loaded / ev.total;
+      if (document.getElementById('message')){
+        document.getElementById('message').firstChild.nodeValue = 'Now Loading...'+percentComplete+'%';
+      }
+    } else {
+      // Unable to compute progress information since the total size is unknown
+    }
+  }, false);
 
   xhr.send();
 };
@@ -162,6 +173,14 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       break;
     case 0xB0: // Control Change: Bn cc dd
       switch (message[1]) {
+        case 0x00: // Bank Select MSB: Bn 00 dd
+          //console.log("BankSelect MSB:", channel, message[2]);
+          synth.bankSelectMsb(channel,message[2]);
+          break;
+        case 0x01: // Modulation
+          // TODO
+          // synth.modulation(channel, message[2]);
+          break;
         case 0x06: // Data Entry: Bn 06 dd
           switch (this.RpnMsb[channel]) {
             case 0:
@@ -179,14 +198,22 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x0A: // Panpot Change: Bn 0A dd
           synth.panpotChange(channel, message[2]);
           break;
-        case 0x78: // All Sound Off: Bn 78 00
-          synth.allSoundOff(channel);
+        case 0x0B: // Expression: Bn 0B dd
+          synth.Expression(channel,message[2]);
           break;
-        case 0x79: // Reset All Control: Bn 79 00
-          synth.resetAllControl(channel);
+        case 0x20: // BankSelect LSB: Bn 20 dd
+          //console.log("BankSelect LSB:", channel, message[2]);
+          synth.bankSelectLsb(channel, message[2]);
           break;
-        case 0x20: // BankSelect
-          //console.log("bankselect:", channel, message[2]);
+        case 0x40: // Hold Pedal: Bn 40 dd
+          // ホールドペダルは0以外有効なのでbooleanで渡す
+          //synth.holdPedal(channel, message[2] !== 0);
+          break;
+        case 0x41: // Portamento : Bn 41 dd
+          //synth.portamento(channel, message[2]);
+          break;
+        case 0x5B: // Reverb : Bn 5B dd
+          synth.reverbSend(channel, message[2]);
           break;
         case 0x64: // RPN MSB
           this.RpnMsb[channel] = message[2];
@@ -194,6 +221,16 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x65: // RPN LSB
           this.RpnLsb[channel] = message[2];
           break;
+        case 0x78: // All Sound Off: Bn 78 00
+          synth.allSoundOff(channel);
+          break;
+        case 0x79: // Reset All Control: Bn 79 00
+          synth.resetAllControl(channel);
+          break;
+        case 0x7B: // All Note Off
+          synth.allNoteOff(channel);
+          break;
+        
         default:
         // not supported
       }
@@ -205,25 +242,66 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       synth.pitchBend(channel, message[1], message[2]);
       break;
     case 0xf0: // System Exclusive Message
-      // ID number
-      switch (message[1]) {
-        case 0x7e: // non-realtime
-          // TODO
+      // console.log(message[2].toString(16),message[3].toString(16),message[4].toString(16),message[5].toString(16),message[6].toString(16),message[7].toString(16));
+      switch (message[2]) {
+        case 0x43: // Yamaha XG
+          switch (message[5]) {
+            case 0x00:
+              switch (message[7]) {
+                case 0x04:
+                  // XG Master Volume (FO 43 10 4C 00 00 04 [value] F7)
+                  synth.setMasterVolume(message[8] << 7 );
+                break;
+                case 0x7E:
+                  // XG Reset (F0 43 10 4C 00 00 7E 00 F7)
+                  synth.init();
+                  synth.isXG = true;
+                break;
+              }
+              break;
+            case 0x20:
+              // TODO:
+              // Reverb Effect (F0 43 10 4C 02 01 00 01 [effect type] F7)
+              // Chorus Effect (F0 43 10 4C 02 01 00 43 [effect type] F7)
+              // Variation Effect (F0 43 10 4C 02 01 00 05 [effect type] F7)
+              break;
+            case 0x08:
+              // Drum mode (F0 43 10 4C 08 [channel] 07 [mode] F7)
+              synth.bankSelectMsb(message[6],127);
+              break;
+          }
           break;
-        case 0x7f: // realtime
-          var device = message[2];
+        case 0x41: // Roland GS / TG300B Mode
+          // TODO
+          switch (message[8]) {
+            case 0x04:
+              // GS Master Volume (F0 41 10 42 12 40 00 04 [value] 58 F7)
+              synth.setMasterVolume(message[9] << 7);
+              break;
+            case 0x7F:
+              // GS Reset (F0 41 10 42 12 40 00 7F 00 41 F7)
+              synth.init();
+              synth.isGS = true;
+              break;
+          }
+          break;
+        case 0x7e: // GM Reset (F0 7E 7F 09 01 F7)
+          // TODO
+          synth.init();
+          break;
+        case 0x7f: // GM Command
           // sub ID 1
           switch (message[3]) {
             case 0x04: // device control
               // sub ID 2
               switch (message[4]) {
-                case 0x01: // master volume
+                case 0x01: // master volume (F0 7F 7F 04 01 00 [value] F7)
                   synth.setMasterVolume(message[5] + (message[6] << 7));
                   break;
               }
               break;
           }
-          break;
+        break;
       }
       break;
     default: // not supported
