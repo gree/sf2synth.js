@@ -260,7 +260,7 @@ SoundFont.SynthesizerNote.prototype.release = function() {
   /** @type {number} */
   var volEndTimeTmp = instrument['volRelease'] * output.gain.value;
   /** @type {number} */
-  var volEndTime = now + volEndTimeTmp + (volEndTimeTmp * release / (release < 0 ? 64 : 63));
+  var volEndTime = now + (volEndTimeTmp * (1 + release / (release < 0 ? 64 : 63)));
   //var volEndTime = now + instrument['volRelease'] * (1 - instrument['volSustain']);
 
   //---------------------------------------------------------------------------
