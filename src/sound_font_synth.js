@@ -52,6 +52,19 @@ SoundFont.Synthesizer = function(input) {
     false, false, false, false, false, false, false, false,
     false, false, false, false, false, false, false, false
   ];
+  /** @type {Array.<number>} */
+  this.channelBankMsb =
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0];
+  /** @type {Array.<number>} */
+  this.channelBankLsb =
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+  /** @type {boolean} */
+  this.isGS = false;
+  /** @type {boolean} */
+  this.isXG = false;
+
+
   /** @type {Array.<boolean>} */
   this.channelMute = [
     false, false, false, false, false, false, false, false,
@@ -253,6 +266,9 @@ SoundFont.Synthesizer.prototype.init = function() {
   this.reverbNode.buffer = this.ir;
   this.reverbLevel.gain.value = 1;
 
+  this.isXG = false;
+  this.isGS = false;
+
   for (i = 0; i < 16; ++i) {
     this.programChange(i, i);
     this.volumeChange(i, 0x64);
@@ -261,6 +277,8 @@ SoundFont.Synthesizer.prototype.init = function() {
     this.pitchBendSensitivity(i, 2);
     this.channelHold[i] = false;
     this.channelExpression[i] = 127;
+    this.bankSelectMsb(i, i === 9 ? 128 : 0x00);
+    this.bankSelectLsb(i, 0x00);
   }
 
   for (i = 0; i < 128; ++i) {
@@ -722,8 +740,10 @@ SoundFont.Synthesizer.prototype.createTableLine = function(array, isTitleLine) {
  * @param {number} velocity 強さ.
  */
 SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
+  /** @type {number} */
+  var bankIndex = this.channelBankMsb[channel];
   /** @type {Object} */
-  var bank = this.bankSet[channel === 9 ? 128 : this.bank];
+  var bank = this.bankSet[bankIndex];
   /** @type {Object} */
   var instrument = bank[this.channelInstrument[channel]];
   /** @type {Object} */
@@ -740,6 +760,8 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   }
 
   if (!instrument) {
+    instrument = bank[bankIndex];
+    /*
     // TODO
     goog.global.console.warn(
       "instrument not found: bank=%s instrument=%s channel=%s",
@@ -748,15 +770,16 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
       channel
     );
     return;
+    */
   }
 
-  instrumentKey = instrument[key];
+  instrumentKey = instrument[key] || bank[0];
 
   if (!(instrumentKey)) {
     // TODO
     goog.global.console.warn(
       "instrument not found: bank=%s instrument=%s channel=%s key=%s",
-      channel === 9 ? 128 : this.bank,
+      bankIndex,
       this.channelInstrument[channel],
       channel,
       key
@@ -796,8 +819,10 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
  * @param {number} velocity 強さ.
  */
 SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
+  /** @type {number} */
+  var bankIndex = this.channelBankMsb[channel];
   /** @type {Object} */
-  var bank = this.bankSet[channel === 9 ? 128 : this.bank];
+  var bank = this.bankSet[bankIndex];
   /** @type {Object} */
   var instrument = bank[this.channelInstrument[channel]];
   /** @type {number} */
@@ -865,6 +890,30 @@ SoundFont.Synthesizer.prototype.hold = function(channel, value) {
 };
 
 /**
+ * @param {number} channel チャンネルのバンクセレクトMSB
+ * @param {number} value 値
+ */
+SoundFont.Synthesizer.prototype.bankSelectMsb = function(channel, value) {
+  // TODO: GS,XG の bank マッピングを実装したら bank 切り替えを有効にする
+  if (false) {
+  //if (this.isXG || this.isGS) {
+    this.channelBankMsb[channel] = value;
+  }
+};
+
+/**
+ * @param {number} channel チャンネルのバンクセレクトLSB
+ * @param {number} value 値
+ */
+SoundFont.Synthesizer.prototype.bankSelectLsb = function(channel, value) {
+  // TODO: GS,XG の bank マッピングを実装したら bank 切り替えを有効にする
+  if (false) {
+  //if (this.isXG || this.isGS) {
+    this.channelBankLsb[channel] = value;
+  }
+};
+
+/**
  * @param {number} channel 音色を変更するチャンネル.
  * @param {number} instrument 音色番号.
  */
@@ -874,8 +923,8 @@ SoundFont.Synthesizer.prototype.programChange = function(channel, instrument) {
       this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:first-child > select').selectedIndex = instrument;
     }
   }
-  // リズムトラックは無視する
-  if (channel === 9) {
+  // GM音源の場合リズムトラックは無視する
+  if (channel === 9 && !this.isXG && !this.isGS) {
     return;
   }
 

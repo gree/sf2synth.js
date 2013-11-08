@@ -192,6 +192,9 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       break;
     case 0xB0: // Control Change: Bn cc dd
       switch (message[1]) {
+        case 0x00: // Bank Select MSB: Bn 00 dd
+          synth.bankSelectMsb(channel,message[2]);
+          break;
         case 0x06: // Data Entry(MSB): Bn 06 dd
           if (this.rpnMode) {
             // RPN
@@ -264,8 +267,8 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
         case 0x79: // Reset All Control: Bn 79 00
           synth.resetAllControl(channel);
           break;
-        case 0x20: // BankSelect
-          //console.log("bankselect:", channel, message[2]);
+        case 0x20: // BankSelect LSB: Bn 00 dd
+          synth.bankSelectLsb(channel, message[2]);
           break;
         case 0x60: //
           //console.log(60);
@@ -314,6 +317,10 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
       switch (message[1]) {
         case 0x7e: // non-realtime
           // TODO
+          // GM Reset: 7F 09 01
+          if (message[2] === 0x7f && message[3] === 0x09 && message[4] === 0x01) {
+            synth.init();
+          }
           break;
         case 0x7f: // realtime
           var device = message[2];
@@ -330,6 +337,37 @@ SoundFont.WebMidiLink.prototype.processMidiMessage = function(message) {
           }
           break;
       }
+
+      // Vendor
+      switch (message[2]) {
+        case 0x43: // Yamaha XG
+          switch (message[7]) {
+            case 0x04:
+              // XG Master Volume: FO 43 10 4C 00 00 04 [value] F7
+              synth.setMasterVolume(message[8] << 7 );
+              break;
+            case 0x7E:
+              // XG Reset: F0 43 10 4C 00 00 7E 00 F7
+              synth.init();
+              synth.isXG = true;
+              break;
+          }
+          break;
+        case 0x41: // Roland GS / TG300B Mode
+          // TODO
+          switch (message[8]) {
+            case 0x04:
+              // GS Master Volume: F0 41 [dev] 42 12 40 00 04 [value] 58 F7
+                synth.setMasterVolume(message[9] << 7);
+              break;
+            case 0x7F:
+              // GS Reset: F0 41 [dev] 42 12 40 00 7F 00 41 F7
+              synth.init();
+              synth.isGS = true;
+              break;
+            }
+          break;
+        }
       break;
     default: // not supported
       break;
