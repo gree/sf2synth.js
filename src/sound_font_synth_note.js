@@ -148,10 +148,10 @@ SynthesizerNote.prototype.noteOn = function() {
 
   // filter
   filter = this.filter = ctx.createBiquadFilter();
-  filter.type = filter.LOWPASS;
+  filter.type = "lowpass";
 
   // panpot
-  panner.panningModel = 0;
+  panner.panningModel = "equalpower";
   panner.setPosition(
     Math.sin(this.panpot * Math.PI / 2),
     0,
