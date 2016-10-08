@@ -1,1 +1,2 @@
-export * from "../src/sf2"
+import Parser from "../src/sf2"
+export default Parser

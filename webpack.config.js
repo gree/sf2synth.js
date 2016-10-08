@@ -9,7 +9,8 @@ module.exports = {
   output: {
     path: path.join(__dirname, "bin"),
     filename: "sf2.[name].js",
-    publicPath: "static"
+    library: "[name]",
+    libraryTarget: "umd"
   },
   module: {
     preLoaders: [
