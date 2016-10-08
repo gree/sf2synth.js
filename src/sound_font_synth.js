@@ -1,16 +1,13 @@
-goog.provide('SoundFont.Synthesizer');
-
-goog.require('SoundFont.SynthesizerNote');
-goog.require('SoundFont.Parser');
-
+import SynthesizerNote from "./sound_font_synth_note"
+import Parser from "./sf2"
 
 /**
  * @constructor
  */
-SoundFont.Synthesizer = function(input) {
+const Synthesizer = function(input) {
   /** @type {Uint8Array} */
   this.input = input;
-  /** @type {SoundFont.Parser} */
+  /** @type {Parser} */
   this.parser;
   /** @type {number} */
   this.bank = 0;
@@ -40,7 +37,7 @@ SoundFont.Synthesizer = function(input) {
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   this.channelPitchBendSensitivity =
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  /** @type {Array.<Array.<SoundFont.SynthesizerNote>>} */
+  /** @type {Array.<Array.<SynthesizerNote>>} */
   this.currentNoteOn = [
     [], [], [], [], [], [], [], [],
     [], [], [], [], [], [], [], []
@@ -56,16 +53,16 @@ SoundFont.Synthesizer = function(input) {
 /**
  * @returns {AudioContext}
  */
-SoundFont.Synthesizer.prototype.getAudioContext = function() {
+Synthesizer.prototype.getAudioContext = function() {
   /** @type {AudioContext} */
   var ctx;
 
-  if (goog.global['AudioContext'] !== void 0) {
-    ctx = new goog.global['AudioContext']();
-  } else if (goog.global['webkitAudioContext'] !== void 0) {
-    ctx = new goog.global['webkitAudioContext']();
-  } else if (goog.global['mozAudioContext'] !== void 0) {
-    ctx = new goog.global['mozAudioContext']();
+  if (AudioContext !== void 0) {
+    ctx = new AudioContext();
+  } else if (webkitAudioContext !== void 0) {
+    ctx = new webkitAudioContext();
+  } else if (mozAudioContext !== void 0) {
+    ctx = new mozAudioContext();
   } else {
     throw new Error('Web Audio not supported');
   }
@@ -81,7 +78,7 @@ SoundFont.Synthesizer.prototype.getAudioContext = function() {
  * @type {Array.<string>}
  * @const
  */
-SoundFont.Synthesizer.ProgramNames = [
+Synthesizer.ProgramNames = [
   "Acoustic Piano",
   "Bright Piano",
   "Electric Grand Piano",
@@ -212,11 +209,11 @@ SoundFont.Synthesizer.ProgramNames = [
   "Gunshot"
 ];
 
-SoundFont.Synthesizer.prototype.init = function() {
+Synthesizer.prototype.init = function() {
   /** @type {number} */
   var i;
 
-  this.parser = new SoundFont.Parser(this.input);
+  this.parser = new Parser(this.input);
   this.bankSet = this.createAllInstruments();
 
   for (i = 0; i < 16; ++i) {
@@ -231,14 +228,14 @@ SoundFont.Synthesizer.prototype.init = function() {
 /**
  * @param {Uint8Array} input
  */
-SoundFont.Synthesizer.prototype.refreshInstruments = function(input) {
+Synthesizer.prototype.refreshInstruments = function(input) {
   this.input = input;
-  this.parser = new SoundFont.Parser(input);
+  this.parser = new Parser(input);
   this.bankSet = this.createAllInstruments();
 };
 
-SoundFont.Synthesizer.prototype.createAllInstruments = function() {
-  /** @type {SoundFont.Parser} */
+Synthesizer.prototype.createAllInstruments = function() {
+  /** @type {Parser} */
   var parser = this.parser;
   parser.parse();
   /** @type {Array} TODO */
@@ -293,7 +290,7 @@ SoundFont.Synthesizer.prototype.createAllInstruments = function() {
   return banks;
 };
 
-SoundFont.Synthesizer.prototype.createNoteInfo = function(parser, info, preset) {
+Synthesizer.prototype.createNoteInfo = function(parser, info, preset) {
   var generator = info.generator;
   /** @type {number} */
   var sampleId;
@@ -406,7 +403,7 @@ SoundFont.Synthesizer.prototype.createNoteInfo = function(parser, info, preset) 
  * @param {number=} opt_default
  * @returns {number}
  */
-SoundFont.Synthesizer.prototype.getModGenAmount = function(generator, enumeratorType, opt_default) {
+Synthesizer.prototype.getModGenAmount = function(generator, enumeratorType, opt_default) {
   if (opt_default === void 0) {
     opt_default = 0;
   }
@@ -414,7 +411,7 @@ SoundFont.Synthesizer.prototype.getModGenAmount = function(generator, enumerator
   return generator[enumeratorType] ? generator[enumeratorType].amount : opt_default;
 };
 
-SoundFont.Synthesizer.prototype.start = function() {
+Synthesizer.prototype.start = function() {
   this.bufSrc.connect(this.gainMaster);
   this.gainMaster.connect(this.ctx.destination);
   this.bufSrc.start(0);
@@ -422,12 +419,12 @@ SoundFont.Synthesizer.prototype.start = function() {
   this.setMasterVolume(16383);
 };
 
-SoundFont.Synthesizer.prototype.setMasterVolume = function(volume) {
+Synthesizer.prototype.setMasterVolume = function(volume) {
   this.masterVolume = volume;
   this.gainMaster.gain.value = this.baseVolume * (volume / 16384);
 };
 
-SoundFont.Synthesizer.prototype.stop = function() {
+Synthesizer.prototype.stop = function() {
   this.bufSrc.disconnect(0);
   this.gainMaster.disconnect(0);
   this.compressor.disconnect(0);
@@ -437,9 +434,9 @@ SoundFont.Synthesizer.prototype.stop = function() {
  * @type {!Array.<string>}
  * @const
  */
-SoundFont.Synthesizer.TableHeader = ['Instrument', 'Vol', 'Pan', 'Bend', 'Range'];
+Synthesizer.TableHeader = ['Instrument', 'Vol', 'Pan', 'Bend', 'Range'];
 
-SoundFont.Synthesizer.prototype.drawSynth = function() {
+Synthesizer.prototype.drawSynth = function() {
   /** @type {HTMLTableElement} */
   var table = this.table =
     /** @type {HTMLTableElement} */(document.createElement('table'));
@@ -459,10 +456,10 @@ SoundFont.Synthesizer.prototype.drawSynth = function() {
   /** @type {number} */
   var j;
 
-  head.appendChild(this.createTableLine(SoundFont.Synthesizer.TableHeader, true));
+  head.appendChild(this.createTableLine(Synthesizer.TableHeader, true));
 
   for (i = 0; i < 16; ++i) {
-    tableLine = this.createTableLine(SoundFont.Synthesizer.TableHeader.length + 128, false);
+    tableLine = this.createTableLine(Synthesizer.TableHeader.length + 128, false);
     body.appendChild(tableLine);
 
     if (i !== 9) {
@@ -470,7 +467,7 @@ SoundFont.Synthesizer.prototype.drawSynth = function() {
       var option;
       for (j = 0; j < 128; ++j) {
         option = document.createElement('option');
-        option.textContent = SoundFont.Synthesizer.ProgramNames[j];
+        option.textContent = Synthesizer.ProgramNames[j];
         select.appendChild(option);
       }
       tableLine.querySelector('td:nth-child(1)').appendChild(select);
@@ -523,7 +520,7 @@ SoundFont.Synthesizer.prototype.drawSynth = function() {
   return table;
 };
 
-SoundFont.Synthesizer.prototype.removeSynth = function() {
+Synthesizer.prototype.removeSynth = function() {
   var table = this.table;
 
   if (table) {
@@ -537,7 +534,7 @@ SoundFont.Synthesizer.prototype.removeSynth = function() {
  * @param {boolean} isTitleLine
  * @returns {HTMLTableRowElement}
  */
-SoundFont.Synthesizer.prototype.createTableLine = function(array, isTitleLine) {
+Synthesizer.prototype.createTableLine = function(array, isTitleLine) {
   /** @type {HTMLTableRowElement} */
   var tr = /** @type {HTMLTableRowElement} */(document.createElement('tr'));
   /** @type {HTMLTableCellElement} */
@@ -566,27 +563,27 @@ SoundFont.Synthesizer.prototype.createTableLine = function(array, isTitleLine) {
  * @param {number} key NoteOn するキー.
  * @param {number} velocity 強さ.
  */
-SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
+Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   /** @type {Object} */
   var bank = this.bankSet[channel === 9 ? 128 : this.bank];
   /** @type {Object} */
   var instrument = bank[this.channelInstrument[channel]];
   /** @type {Object} */
   var instrumentKey;
-  /** @type {SoundFont.SynthesizerNote} */
+  /** @type {SynthesizerNote} */
   var note;
 
   if (this.table) {
     this.table.querySelector(
       'tbody > ' +
         'tr:nth-child(' + (channel+1) + ') > ' +
-        'td:nth-child(' + (SoundFont.Synthesizer.TableHeader.length+key+1) + ')'
+        'td:nth-child(' + (Synthesizer.TableHeader.length+key+1) + ')'
     ).classList.add('note-on');
   }
 
   if (!instrument) {
     // TODO
-    goog.global.console.warn(
+    console.warn(
       "instrument not found: bank=%s instrument=%s channel=%s",
       channel === 9 ? 128 : this.bank,
       this.channelInstrument[channel],
@@ -599,7 +596,7 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
 
   if (!(instrumentKey)) {
     // TODO
-    goog.global.console.warn(
+    console.warn(
       "instrument not found: bank=%s instrument=%s channel=%s key=%s",
       channel === 9 ? 128 : this.bank,
       this.channelInstrument[channel],
@@ -622,7 +619,7 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   instrumentKey['pitchBendSensitivity'] = this.channelPitchBendSensitivity[channel];
 
   // note on
-  note = new SoundFont.SynthesizerNote(this.ctx, this.gainMaster, instrumentKey);
+  note = new SynthesizerNote(this.ctx, this.gainMaster, instrumentKey);
   note.noteOn();
   this.currentNoteOn[channel].push(note);
 };
@@ -632,7 +629,7 @@ SoundFont.Synthesizer.prototype.noteOn = function(channel, key, velocity) {
  * @param {number} key NoteOff するキー.
  * @param {number} velocity 強さ.
  */
-SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
+Synthesizer.prototype.noteOff = function(channel, key, velocity) {
   /** @type {Object} */
   var bank = this.bankSet[channel === 9 ? 128 : this.bank];
   /** @type {Object} */
@@ -641,16 +638,16 @@ SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
   var i;
   /** @type {number} */
   var il;
-  /** @type {Array.<SoundFont.SynthesizerNote>} */
+  /** @type {Array.<SynthesizerNote>} */
   var currentNoteOn = this.currentNoteOn[channel];
-  /** @type {SoundFont.SynthesizerNote} */
+  /** @type {SynthesizerNote} */
   var note;
 
   if (this.table) {
     this.table.querySelector(
       'tbody > ' +
       'tr:nth-child(' + (channel+1) + ') > ' +
-      'td:nth-child(' + (key+SoundFont.Synthesizer.TableHeader.length+1) + ')'
+      'td:nth-child(' + (key+Synthesizer.TableHeader.length+1) + ')'
     ).classList.remove('note-on');
   }
 
@@ -673,7 +670,7 @@ SoundFont.Synthesizer.prototype.noteOff = function(channel, key, velocity) {
  * @param {number} channel 音色を変更するチャンネル.
  * @param {number} instrument 音色番号.
  */
-SoundFont.Synthesizer.prototype.programChange = function(channel, instrument) {
+Synthesizer.prototype.programChange = function(channel, instrument) {
   if (this.table) {
     if (channel !== 9) {
       this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:first-child > select').selectedIndex = instrument;
@@ -691,7 +688,7 @@ SoundFont.Synthesizer.prototype.programChange = function(channel, instrument) {
  * @param {number} channel 音量を変更するチャンネル.
  * @param {number} volume 音量(0-127).
  */
-SoundFont.Synthesizer.prototype.volumeChange = function(channel, volume) {
+Synthesizer.prototype.volumeChange = function(channel, volume) {
   if (this.table) {
     this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(2)').textContent = volume;
   }
@@ -703,7 +700,7 @@ SoundFont.Synthesizer.prototype.volumeChange = function(channel, volume) {
  * @param {number} channel panpot を変更するチャンネル.
  * @param {number} panpot panpot(0-127).
  */
-SoundFont.Synthesizer.prototype.panpotChange = function(channel, panpot) {
+Synthesizer.prototype.panpotChange = function(channel, panpot) {
   if (this.table) {
     this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(3)').textContent = panpot;
   }
@@ -716,14 +713,14 @@ SoundFont.Synthesizer.prototype.panpotChange = function(channel, panpot) {
  * @param {number} lowerByte
  * @param {number} higherByte
  */
-SoundFont.Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherByte) {
+Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherByte) {
   /** @type {number} */
   var bend = (lowerByte & 0x7f) | ((higherByte & 0x7f) << 7);
   /** @type {number} */
   var i;
   /** @type {number} */
   var il;
-  /** @type {Array.<SoundFont.SynthesizerNote>} */
+  /** @type {Array.<SynthesizerNote>} */
   var currentNoteOn = this.currentNoteOn[channel];
   /** @type {number} */
   var calculated = bend - 8192;
@@ -743,7 +740,7 @@ SoundFont.Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherB
  * @param {number} channel pitch bend sensitivity を変更するチャンネル.
  * @param {number} sensitivity
  */
-SoundFont.Synthesizer.prototype.pitchBendSensitivity = function(channel, sensitivity) {
+Synthesizer.prototype.pitchBendSensitivity = function(channel, sensitivity) {
   if (this.table) {
     this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(5)').textContent = sensitivity;
   }
@@ -754,8 +751,8 @@ SoundFont.Synthesizer.prototype.pitchBendSensitivity = function(channel, sensiti
 /**
  * @param {number} channel 音を消すチャンネル.
  */
-SoundFont.Synthesizer.prototype.allSoundOff = function(channel) {
-  /** @type {Array.<SoundFont.SynthesizerNote>} */
+Synthesizer.prototype.allSoundOff = function(channel) {
+  /** @type {Array.<SynthesizerNote>} */
   var currentNoteOn = this.currentNoteOn[channel];
 
   while (currentNoteOn.length > 0) {
@@ -766,7 +763,8 @@ SoundFont.Synthesizer.prototype.allSoundOff = function(channel) {
 /**
  * @param {number} channel リセットするチャンネル
  */
-SoundFont.Synthesizer.prototype.resetAllControl = function(channel) {
+Synthesizer.prototype.resetAllControl = function(channel) {
   this.pitchBend(channel, 0x00, 0x40); // 8192
 };
 
+export default Synthesizer
