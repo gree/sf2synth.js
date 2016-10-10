@@ -450,7 +450,7 @@ Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherByte) {
   /** @type {number} */
   var calculated = bend - 8192;
 
-  this.view.pitchBend(calculated)
+  this.view.pitchBend(channel, calculated)
 
   for (i = 0, il = currentNoteOn.length; i < il; ++i) {
     currentNoteOn[i].updatePitchBend(calculated);

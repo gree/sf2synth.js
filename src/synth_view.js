@@ -133,55 +133,61 @@ const ProgramNames = [
   "Gunshot"
 ];
 
-/**
- * @type {!Array.<string>}
- * @const
- */
-const TableHeader = ['Instrument', 'Vol', 'Pan', 'Bend', 'Range'];
+function render(str) {
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = str.replace(/^\s+/, "");
+  return wrapper.firstChild;
+}
+
+function renderKeys() {
+  let html = "";
+  for (let i = 0; i < 128; i++) {
+    const n = i % 12;
+    const isBlack = [1, 3, 6, 8, 10].includes(n);
+    html += `<div class="key ${isBlack ? "black" : "white"}"></div>`;
+  }
+  return html
+}
+
+function renderProgramOptions() {
+  let html = "";
+  for (let j = 0; j < 128; ++j) {
+    html += `<option>${ProgramNames[j]}</option>`
+  }
+  return `<select>${html}</select>`;
+}
+
+function renderInstrument(program) {
+  return render(`
+    <div class="instrument">
+      <div class="program">${program}</div>
+      <div class="volume"></div>
+      <div class="panpot"></div>
+      <div class="pitchBend"></div>
+      <div class="pitchBendSensitivity"></div>
+      <div class="keys">${renderKeys()}</div>
+    </div>
+  `)
+}
 
 export default class View {
   draw(synth) {
-    /** @type {HTMLTableElement} */
-    var table = this.table =
-      /** @type {HTMLTableElement} */(document.createElement('table'));
-    /** @type {HTMLTableSectionElement} */
-    var head =
-      /** @type {HTMLTableSectionElement} */(document.createElement('thead'));
-    /** @type {HTMLTableSectionElement} */
-    var body =
-      /** @type {HTMLTableSectionElement} */
-      (document.createElement('tbody'));
-    /** @type {HTMLTableRowElement} */
-    var tableLine;
-    /** @type {NodeList} */
-    var notes;
-
-    head.appendChild(this.createTableLine(TableHeader, true));
+    const element = this.element = render(`<div id="root"></div>`);
 
     for (let i = 0; i < 16; ++i) {
-      tableLine = this.createTableLine(TableHeader.length + 128, false);
-      body.appendChild(tableLine);
+      const program = i !== 9 ? renderProgramOptions() : "[ RHYTHM TRACK ]"
+      const item = renderInstrument(program)
 
       const channel = i;
-
-      if (i !== 9) {
-        var select = document.createElement('select');
-        var option;
-        for (let j = 0; j < 128; ++j) {
-          option = document.createElement('option');
-          option.textContent = ProgramNames[j];
-          select.appendChild(option);
-        }
-        tableLine.querySelector('td:nth-child(1)').appendChild(select);
+      const select = item.querySelector('select');
+      if (select) {
         select.addEventListener('change', event => {
           synth.programChange(channel, event.target.selectedIndex);
         }, false);
         select.selectedIndex = synth.channelInstrument[i];
-      } else {
-        tableLine.querySelector('td:first-child').textContent = '[ RHYTHM TRACK ]';
       }
 
-      notes = tableLine.querySelectorAll('td:nth-last-child(-n+128)');
+      const notes = item.querySelectorAll(".key");
       for (let j = 0; j < 128; ++j) {
         const key = j;
 
@@ -206,114 +212,87 @@ export default class View {
           synth.noteOff(channel, key, 0);
         });
       }
+
+      element.appendChild(item)
     }
 
-    table.appendChild(head);
-    table.appendChild(body);
-
-    return table;
-  }
-
-  /**
-   * @param {!(Array.<string>|number)} array
-   * @param {boolean} isTitleLine
-   * @returns {HTMLTableRowElement}
-   */
-  createTableLine(array, isTitleLine) {
-    /** @type {HTMLTableRowElement} */
-    var tr = /** @type {HTMLTableRowElement} */(document.createElement('tr'));
-    /** @type {HTMLTableCellElement} */
-    var cell;
-    /** @type {boolean} */
-    var isArray = array instanceof Array;
-    /** @type {number} */
-    var i;
-    /** @type {number} */
-    var il = isArray ? array.length : /** @type {number} */(array);
-
-    for (i = 0; i < il; ++i) {
-      cell =
-        /** @type {HTMLTableCellElement} */
-        (document.createElement(isTitleLine ? 'th' : 'td'));
-      cell.textContent = (isArray && array[i] !== void 0) ? array[i] : '';
-      tr.appendChild(cell);
-    }
-
-    return tr;
+    return element;
   }
 
   remove() {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    this.table.parentNode.removeChild(this.table);
-    this.table = null;
+    this.element.parentNode.removeChild(this.element);
+    this.element = null;
+  }
+
+  getInstrumentElement(channel) {
+    return this.element.querySelectorAll(".instrument")[channel]
+  }
+
+  getKeyElement(channel, key) {
+    return this.getInstrumentElement(channel).querySelectorAll(".key")[key]
   }
 
   noteOn(channel, key) {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    this.table.querySelector(
-      'tbody > ' +
-        'tr:nth-child(' + (channel+1) + ') > ' +
-        'td:nth-child(' + (TableHeader.length+key+1) + ')'
-    ).classList.add('note-on');
+    this.getKeyElement(channel, key).classList.add('note-on');
   }
 
   noteOff(channel, key) {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    this.table.querySelector(
-      'tbody > ' +
-      'tr:nth-child(' + (channel+1) + ') > ' +
-      'td:nth-child(' + (key+TableHeader.length+1) + ')'
-    ).classList.remove('note-on');
+    this.getKeyElement(channel, key).classList.remove('note-on');
   }
 
   programChange(channel, instrument) {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    if (channel !== 9) {
-      this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:first-child > select').selectedIndex = instrument;
+    const select = this.getInstrumentElement(channel).querySelector(".program select")
+
+    if (select) {
+      select.selectedIndex = instrument;
     }
   }
 
   volumeChange(channel, volume) {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(2)').textContent = volume;
+    this.getInstrumentElement(channel).querySelector(".volume").textContent = volume;
   }
 
   panpotChange(channel, panpot) {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(3)').textContent = panpot;
+    this.getInstrumentElement(channel).querySelector(".panpot").textContent = panpot;
   }
 
   pitchBend(channel, calculatedPitch) {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(4)').textContent = calculatedPitch;
+    this.getInstrumentElement(channel).querySelector(".pitchBend").textContent = calculatedPitch;
   }
 
   pitchBendSensitivity(channel, sensitivity) {
-    if (!this.table) {
+    if (!this.element) {
       return;
     }
 
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(5)').textContent = sensitivity;
+    this.getInstrumentElement(channel).querySelector(".pitchBendSensitivity").textContent = sensitivity;
   }
 }
