@@ -139,6 +139,7 @@ SynthesizerNote.prototype.noteOn = function() {
   bufferSource.loop = (this.channel !== 9);
   bufferSource.loopStart = loopStart;
   bufferSource.loopEnd   = loopEnd;
+  bufferSource.onended = () => this.disconnect()
   this.updatePitchBend(this.pitchBend);
 
   // audio node
@@ -220,6 +221,11 @@ SynthesizerNote.prototype.noteOff = function() {
     return;
   }
 
+  // ignore note off for rhythm track
+  if (this.channel === 9) {
+    return;
+  }
+
   //---------------------------------------------------------------------------
   // Release
   //---------------------------------------------------------------------------
@@ -230,21 +236,13 @@ SynthesizerNote.prototype.noteOff = function() {
 
   bufferSource.loop = false;
   bufferSource.stop(volEndTime);
-
-  // disconnect
-  //*
-  setTimeout(
-    (function(note) {
-      return function() {
-        note.bufferSource.disconnect(0);
-        note.panner.disconnect(0);
-        note.gainOutput.disconnect(0);
-      };
-    })(this),
-    instrument['volRelease'] * 1000
-  );
-  //*/
 };
+
+SynthesizerNote.prototype.disconnect = function() {
+  this.bufferSource.disconnect(0);
+  this.panner.disconnect(0);
+  this.gainOutput.disconnect(0);
+}
 
 SynthesizerNote.prototype.schedulePlaybackRate = function() {
   var playbackRate = this.bufferSource.playbackRate;
