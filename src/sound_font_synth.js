@@ -1,5 +1,6 @@
 import SynthesizerNote from "./sound_font_synth_note"
 import Parser from "./sf2"
+import View from "./synth_view"
 
 /**
  * @constructor
@@ -47,8 +48,8 @@ const Synthesizer = function(input) {
   /** @type {number} */
   this.masterVolume = 16384;
 
-  /** @type {HTMLTableElement} */
-  this.table;
+  /** @type {View} */
+  this.view = new View();
 };
 /**
  * @returns {AudioContext}
@@ -73,141 +74,6 @@ Synthesizer.prototype.getAudioContext = function() {
 
   return ctx;
 };
-
-/**
- * @type {Array.<string>}
- * @const
- */
-Synthesizer.ProgramNames = [
-  "Acoustic Piano",
-  "Bright Piano",
-  "Electric Grand Piano",
-  "Honky-tonk Piano",
-  "Electric Piano",
-  "Electric Piano 2",
-  "Harpsichord",
-  "Clavi",
-  "Celesta",
-  "Glockenspiel",
-  "Musical box",
-  "Vibraphone",
-  "Marimba",
-  "Xylophone",
-  "Tubular Bell",
-  "Dulcimer",
-  "Drawbar Organ",
-  "Percussive Organ",
-  "Rock Organ",
-  "Church organ",
-  "Reed organ",
-  "Accordion",
-  "Harmonica",
-  "Tango Accordion",
-  "Acoustic Guitar (nylon)",
-  "Acoustic Guitar (steel)",
-  "Electric Guitar (jazz)",
-  "Electric Guitar (clean)",
-  "Electric Guitar (muted)",
-  "Overdriven Guitar",
-  "Distortion Guitar",
-  "Guitar harmonics",
-  "Acoustic Bass",
-  "Electric Bass (finger)",
-  "Electric Bass (pick)",
-  "Fretless Bass",
-  "Slap Bass 1",
-  "Slap Bass 2",
-  "Synth Bass 1",
-  "Synth Bass 2",
-  "Violin",
-  "Viola",
-  "Cello",
-  "Double bass",
-  "Tremolo Strings",
-  "Pizzicato Strings",
-  "Orchestral Harp",
-  "Timpani",
-  "String Ensemble 1",
-  "String Ensemble 2",
-  "Synth Strings 1",
-  "Synth Strings 2",
-  "Voice Aahs",
-  "Voice Oohs",
-  "Synth Voice",
-  "Orchestra Hit",
-  "Trumpet",
-  "Trombone",
-  "Tuba",
-  "Muted Trumpet",
-  "French horn",
-  "Brass Section",
-  "Synth Brass 1",
-  "Synth Brass 2",
-  "Soprano Sax",
-  "Alto Sax",
-  "Tenor Sax",
-  "Baritone Sax",
-  "Oboe",
-  "English Horn",
-  "Bassoon",
-  "Clarinet",
-  "Piccolo",
-  "Flute",
-  "Recorder",
-  "Pan Flute",
-  "Blown Bottle",
-  "Shakuhachi",
-  "Whistle",
-  "Ocarina",
-  "Lead 1 (square)",
-  "Lead 2 (sawtooth)",
-  "Lead 3 (calliope)",
-  "Lead 4 (chiff)",
-  "Lead 5 (charang)",
-  "Lead 6 (voice)",
-  "Lead 7 (fifths)",
-  "Lead 8 (bass + lead)",
-  "Pad 1 (Fantasia)",
-  "Pad 2 (warm)",
-  "Pad 3 (polysynth)",
-  "Pad 4 (choir)",
-  "Pad 5 (bowed)",
-  "Pad 6 (metallic)",
-  "Pad 7 (halo)",
-  "Pad 8 (sweep)",
-  "FX 1 (rain)",
-  "FX 2 (soundtrack)",
-  "FX 3 (crystal)",
-  "FX 4 (atmosphere)",
-  "FX 5 (brightness)",
-  "FX 6 (goblins)",
-  "FX 7 (echoes)",
-  "FX 8 (sci-fi)",
-  "Sitar",
-  "Banjo",
-  "Shamisen",
-  "Koto",
-  "Kalimba",
-  "Bagpipe",
-  "Fiddle",
-  "Shanai",
-  "Tinkle Bell",
-  "Agogo",
-  "Steel Drums",
-  "Woodblock",
-  "Taiko Drum",
-  "Melodic Tom",
-  "Synth Drum",
-  "Reverse Cymbal",
-  "Guitar Fret Noise",
-  "Breath Noise",
-  "Seashore",
-  "Bird Tweet",
-  "Telephone Ring",
-  "Helicopter",
-  "Applause",
-  "Gunshot"
-];
 
 Synthesizer.prototype.init = function() {
   /** @type {number} */
@@ -430,133 +296,13 @@ Synthesizer.prototype.stop = function() {
   this.compressor.disconnect(0);
 };
 
-/**
- * @type {!Array.<string>}
- * @const
- */
-Synthesizer.TableHeader = ['Instrument', 'Vol', 'Pan', 'Bend', 'Range'];
-
 Synthesizer.prototype.drawSynth = function() {
-  /** @type {HTMLTableElement} */
-  var table = this.table =
-    /** @type {HTMLTableElement} */(document.createElement('table'));
-  /** @type {HTMLTableSectionElement} */
-  var head =
-    /** @type {HTMLTableSectionElement} */(document.createElement('thead'));
-  /** @type {HTMLTableSectionElement} */
-  var body =
-    /** @type {HTMLTableSectionElement} */
-    (document.createElement('tbody'));
-  /** @type {HTMLTableRowElement} */
-  var tableLine;
-  /** @type {NodeList} */
-  var notes;
-  /** @type {number} */
-  var i;
-  /** @type {number} */
-  var j;
-
-  head.appendChild(this.createTableLine(Synthesizer.TableHeader, true));
-
-  for (i = 0; i < 16; ++i) {
-    tableLine = this.createTableLine(Synthesizer.TableHeader.length + 128, false);
-    body.appendChild(tableLine);
-
-    if (i !== 9) {
-      var select = document.createElement('select');
-      var option;
-      for (j = 0; j < 128; ++j) {
-        option = document.createElement('option');
-        option.textContent = Synthesizer.ProgramNames[j];
-        select.appendChild(option);
-      }
-      tableLine.querySelector('td:nth-child(1)').appendChild(select);
-      select.addEventListener('change', (function(synth, channel) {
-        return function(event) {
-          synth.programChange(channel, event.target.selectedIndex);
-        }
-      })(this, i), false);
-      select.selectedIndex = this.channelInstrument[i];
-    } else {
-      tableLine.querySelector('td:first-child').textContent = '[ RHYTHM TRACK ]';
-    }
-
-    notes = tableLine.querySelectorAll('td:nth-last-child(-n+128)');
-    for (j = 0; j < 128; ++j) {
-      notes[j].addEventListener('mousedown', (function(synth, channel, key) {
-        return function(event) {
-          event.preventDefault();
-          synth.drag = true;
-          synth.noteOn(channel, key, 127);
-        }
-      })(this, i, j));
-      notes[j].addEventListener('mouseover', (function(synth, channel, key) {
-        return function(event) {
-          event.preventDefault();
-          if (synth.drag) {
-            synth.noteOn(channel, key, 127);
-          }
-        }
-      })(this, i, j));
-      notes[j].addEventListener('mouseout', (function(synth, channel, key) {
-        return function(event) {
-          event.preventDefault();
-          synth.noteOff(channel, key, 0);
-        }
-      })(this, i, j));
-      notes[j].addEventListener('mouseup', (function(synth, channel, key) {
-        return function(event) {
-          event.preventDefault();
-          synth.drag = false;
-          synth.noteOff(channel, key, 0);
-        }
-      })(this, i, j));
-    }
-  }
-
-  table.appendChild(head);
-  table.appendChild(body);
-
-  return table;
-};
+  return this.view.draw(this);
+}
 
 Synthesizer.prototype.removeSynth = function() {
-  var table = this.table;
-
-  if (table) {
-    table.parentNode.removeChild(table);
-    this.table = null;
-  }
+  this.view.remove();
 };
-
-/**
- * @param {!(Array.<string>|number)} array
- * @param {boolean} isTitleLine
- * @returns {HTMLTableRowElement}
- */
-Synthesizer.prototype.createTableLine = function(array, isTitleLine) {
-  /** @type {HTMLTableRowElement} */
-  var tr = /** @type {HTMLTableRowElement} */(document.createElement('tr'));
-  /** @type {HTMLTableCellElement} */
-  var cell;
-  /** @type {boolean} */
-  var isArray = array instanceof Array;
-  /** @type {number} */
-  var i;
-  /** @type {number} */
-  var il = isArray ? array.length : /** @type {number} */(array);
-
-  for (i = 0; i < il; ++i) {
-    cell =
-      /** @type {HTMLTableCellElement} */
-      (document.createElement(isTitleLine ? 'th' : 'td'));
-    cell.textContent = (isArray && array[i] !== void 0) ? array[i] : '';
-    tr.appendChild(cell);
-  }
-
-  return tr;
-};
-
 
 /**
  * @param {number} channel NoteOn するチャンネル.
@@ -573,13 +319,7 @@ Synthesizer.prototype.noteOn = function(channel, key, velocity) {
   /** @type {SynthesizerNote} */
   var note;
 
-  if (this.table) {
-    this.table.querySelector(
-      'tbody > ' +
-        'tr:nth-child(' + (channel+1) + ') > ' +
-        'td:nth-child(' + (Synthesizer.TableHeader.length+key+1) + ')'
-    ).classList.add('note-on');
-  }
+  this.view.noteOn(channel, key);
 
   if (!instrument) {
     // TODO
@@ -643,13 +383,7 @@ Synthesizer.prototype.noteOff = function(channel, key, velocity) {
   /** @type {SynthesizerNote} */
   var note;
 
-  if (this.table) {
-    this.table.querySelector(
-      'tbody > ' +
-      'tr:nth-child(' + (channel+1) + ') > ' +
-      'td:nth-child(' + (key+Synthesizer.TableHeader.length+1) + ')'
-    ).classList.remove('note-on');
-  }
+  this.view.noteOff(channel, key);
 
   if (!instrument) {
     return;
@@ -671,11 +405,8 @@ Synthesizer.prototype.noteOff = function(channel, key, velocity) {
  * @param {number} instrument 音色番号.
  */
 Synthesizer.prototype.programChange = function(channel, instrument) {
-  if (this.table) {
-    if (channel !== 9) {
-      this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:first-child > select').selectedIndex = instrument;
-    }
-  }
+  this.view.programChange(channel, instrument);
+
   // リズムトラックは無視する
   if (channel === 9) {
     return;
@@ -689,10 +420,7 @@ Synthesizer.prototype.programChange = function(channel, instrument) {
  * @param {number} volume 音量(0-127).
  */
 Synthesizer.prototype.volumeChange = function(channel, volume) {
-  if (this.table) {
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(2)').textContent = volume;
-  }
-
+  this.view.volumeChange(channel, volume);
   this.channelVolume[channel] = volume;
 };
 
@@ -701,10 +429,7 @@ Synthesizer.prototype.volumeChange = function(channel, volume) {
  * @param {number} panpot panpot(0-127).
  */
 Synthesizer.prototype.panpotChange = function(channel, panpot) {
-  if (this.table) {
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(3)').textContent = panpot;
-  }
-
+  this.view.panpotChange(channel, panpot);
   this.channelPanpot[channel] = panpot;
 };
 
@@ -725,9 +450,7 @@ Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherByte) {
   /** @type {number} */
   var calculated = bend - 8192;
 
-  if (this.table) {
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(4)').textContent = calculated;
-  }
+  this.view.pitchBend(calculated)
 
   for (i = 0, il = currentNoteOn.length; i < il; ++i) {
     currentNoteOn[i].updatePitchBend(calculated);
@@ -741,10 +464,7 @@ Synthesizer.prototype.pitchBend = function(channel, lowerByte, higherByte) {
  * @param {number} sensitivity
  */
 Synthesizer.prototype.pitchBendSensitivity = function(channel, sensitivity) {
-  if (this.table) {
-    this.table.querySelector('tbody > tr:nth-child(' + (channel+1) + ') > td:nth-child(5)').textContent = sensitivity;
-  }
-
+  this.view.pitchBendSensitivity(channel, sensitivity)
   this.channelPitchBendSensitivity[channel] = sensitivity;
 };
 
