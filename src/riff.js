@@ -1,105 +1,104 @@
-const Riff = {};
-
-/**
- * @param {ByteArray} input input buffer.
- * @param {Object=} opt_params option parameters.
- * @constructor
- */
-Riff.Parser = function(input, opt_params) {
-  opt_params = opt_params || {};
-  /** @type {ByteArray} */
-  this.input = input;
-  /** @type {number} */
-  this.ip = opt_params['index'] || 0;
-  /** @type {number} */
-  this.length = opt_params['length'] || input.length - this.ip;
-  /** @type {Array.<Riff.Chunk>} */
-  this.chunkList;
-  /** @type {number} */
-  this.offset = this.ip;
-  /** @type {boolean} */
-  this.padding =
-    opt_params['padding'] !== void 0 ? opt_params['padding'] : true;
-  /** @type {boolean} */
-  this.bigEndian =
-    opt_params['bigEndian'] !== void 0 ? opt_params['bigEndian'] : false;
-};
-
-/**
- * @param {string} type
- * @param {number} size
- * @param {number} offset
- * @constructor
- */
-Riff.Chunk = function(type, size, offset) {
-  /** @type {string} */
-  this.type = type;
-  /** @type {number} */
-  this.size = size;
-  /** @type {number} */
-  this.offset = offset;
-};
-
-Riff.Parser.prototype.parse = function() {
-  /** @type {number} */
-  var length = this.length + this.offset;
-
-  this.chunkList = [];
-
-  while (this.ip < length) {
-    this.parseChunk();
+export class Parser {
+  /**
+  * @param {ByteArray} input input buffer.
+  * @param {Object=} opt_params option parameters.
+  * @constructor
+  */
+  constructor(input, opt_params = {}) {
+    /** @type {ByteArray} */
+    this.input = input
+    /** @type {number} */
+    this.ip = opt_params['index'] || 0
+    /** @type {number} */
+    this.length = opt_params['length'] || input.length - this.ip
+    /** @type {Array.<Chunk>} */
+    this.chunkList
+    /** @type {number} */
+    this.offset = this.ip
+    /** @type {boolean} */
+    this.padding =
+      opt_params['padding'] !== void 0 ? opt_params['padding'] : true
+    /** @type {boolean} */
+    this.bigEndian =
+      opt_params['bigEndian'] !== void 0 ? opt_params['bigEndian'] : false
   }
-};
+  
+  parse() {
+    /** @type {number} */
+    var length = this.length + this.offset
 
-Riff.Parser.prototype.parseChunk = function() {
-  /** @type {ByteArray} */
-  var input = this.input;
-  /** @type {number} */
-  var ip = this.ip;
-  /** @type {number} */
-  var size;
+    this.chunkList = []
 
-  this.chunkList.push(new Riff.Chunk(
-    String.fromCharCode(input[ip++], input[ip++], input[ip++], input[ip++]),
-    (size = this.bigEndian ?
-       ((input[ip++] << 24) | (input[ip++] << 16) |
-        (input[ip++] <<  8) | (input[ip++]      )) >>> 0 :
-       ((input[ip++]      ) | (input[ip++] <<  8) |
-        (input[ip++] << 16) | (input[ip++] << 24)) >>> 0
-    ),
-    ip
-  ));
-
-  ip += size;
-
-  // padding
-  if (this.padding && ((ip - this.offset) & 1) === 1) {
-    ip++;
+    while (this.ip < length) {
+      this.parseChunk()
+    }
   }
 
-  this.ip = ip;
-};
+  parseChunk() {
+    /** @type {ByteArray} */
+    var input = this.input
+    /** @type {number} */
+    var ip = this.ip
+    /** @type {number} */
+    var size
 
-/**
- * @param {number} index chunk index.
- * @return {?Riff.Chunk}
- */
-Riff.Parser.prototype.getChunk = function(index) {
-  /** @type {Riff.Chunk} */
-  var chunk = this.chunkList[index];
+    this.chunkList.push(new Chunk(
+      String.fromCharCode(input[ip++], input[ip++], input[ip++], input[ip++]),
+      (size = this.bigEndian ?
+        ((input[ip++] << 24) | (input[ip++] << 16) |
+          (input[ip++] <<  8) | (input[ip++]      )) >>> 0 :
+        ((input[ip++]      ) | (input[ip++] <<  8) |
+          (input[ip++] << 16) | (input[ip++] << 24)) >>> 0
+      ),
+      ip
+    ))
 
-  if (chunk === void 0) {
-    return null;
+    ip += size
+
+    // padding
+    if (this.padding && ((ip - this.offset) & 1) === 1) {
+      ip++
+    }
+
+    this.ip = ip
   }
 
-  return chunk;
-};
+  /**
+   * @param {number} index chunk index.
+   * @return {Chunk}
+   */
+  getChunk(index) {
+    /** @type {Chunk} */
+    var chunk = this.chunkList[index]
 
-/**
- * @return {number}
- */
-Riff.Parser.prototype.getNumberOfChunks = function() {
-  return this.chunkList.length;
+    if (chunk === void 0) {
+      return null
+    }
+
+    return chunk
+  }
+
+  /**
+   * @return {number}
+   */
+  getNumberOfChunks() {
+    return this.chunkList.length
+  }
 }
 
-export default Riff
+export class Chunk {
+  /**
+   * @param {string} type
+   * @param {number} size
+   * @param {number} offset
+   * @constructor
+   */
+  constructor(type, size, offset) {
+    /** @type {string} */
+    this.type = type
+    /** @type {number} */
+    this.size = size
+    /** @type {number} */
+    this.offset = offset
+  }
+}
