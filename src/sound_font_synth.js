@@ -58,12 +58,12 @@ Synthesizer.prototype.getAudioContext = function() {
   /** @type {AudioContext} */
   var ctx;
 
-  if (AudioContext !== void 0) {
-    ctx = new AudioContext();
-  } else if (webkitAudioContext !== void 0) {
-    ctx = new webkitAudioContext();
-  } else if (mozAudioContext !== void 0) {
-    ctx = new mozAudioContext();
+  if (window.AudioContext !== void 0) {
+    ctx = new window.AudioContext();
+  } else if (window.webkitAudioContext !== void 0) {
+    ctx = new window.webkitAudioContext();
+  } else if (window.mozAudioContext !== void 0) {
+    ctx = new window.mozAudioContext();
   } else {
     throw new Error('Web Audio not supported');
   }
