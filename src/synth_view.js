@@ -2,7 +2,7 @@
  * @type {Array.<string>}
  * @const
  */
-const ProgramNames = [
+const ProgramNames = { 0: [
   "Acoustic Piano",
   "Bright Piano",
   "Electric Grand Piano",
@@ -131,7 +131,8 @@ const ProgramNames = [
   "Helicopter",
   "Applause",
   "Gunshot"
-];
+], 128: ["Rhythm Track"]
+};
 
 function render(str) {
   const wrapper = document.createElement("div");
@@ -149,10 +150,12 @@ function renderKeys() {
   return html
 }
 
-function renderProgramOptions() {
-  let html = "";
-  for (let j = 0; j < 128; ++j) {
-    html += `<option>${ProgramNames[j]}</option>`
+function renderProgramOptions(programNames, bank) {
+  let html = ""
+  const names = programNames[bank]
+  for (let i in names) {
+    const name = names[i]
+    html += `<option value="${i}">${i}: ${name}</option>`
   }
   return `<select>${html}</select>`;
 }
@@ -170,19 +173,44 @@ function renderInstrument(program) {
   `)
 }
 
+function programNamesFromBankSet(bankSet) {
+  return bankSet.map(bank => bank.map(s => s.name))
+}
+
+function mergeProgramNames(left, right) {
+  function mergedKeys(a, b) {
+    return new Set([...Object.keys(a) ,...Object.keys(b)])
+  }
+  const banks = mergedKeys(left, right)
+  const result = {}
+  for (let bank of banks) {
+    const l = left[bank] || []
+    const r = right[bank] || []
+    const list = {}
+    const programs = mergedKeys(l, r)
+    for (let p of programs) {
+      list[p] = `${l[p] || "None"} (${r[p] || "None"})`
+    }
+    result[bank] = list
+  }
+  return result
+}
+
 export default class View {
   draw(synth) {
     const element = this.element = render(`<div id="root"></div>`);
+    const programNames = mergeProgramNames(programNamesFromBankSet(synth.bankSet), ProgramNames)
 
     for (let i = 0; i < 16; ++i) {
-      const program = i !== 9 ? renderProgramOptions() : "[ RHYTHM TRACK ]"
+      const bank = i !== 9 ? 0 : 128
+      const program = renderProgramOptions(programNames, bank)
       const item = renderInstrument(program)
 
       const channel = i;
       const select = item.querySelector('select');
       if (select) {
         select.addEventListener('change', event => {
-          synth.programChange(channel, event.target.selectedIndex);
+          synth.programChange(channel, parseInt(event.target.value));
         }, false);
         select.selectedIndex = synth.channels[i].instrument;
       }
@@ -260,7 +288,7 @@ export default class View {
     const select = this.getInstrumentElement(channel).querySelector(".program select")
 
     if (select) {
-      select.selectedIndex = instrument;
+      select.value = instrument;
     }
   }
 
