@@ -49,7 +49,6 @@ export default class {
     }
 
     this.parseRiffChunk(chunk)
-  //console.log(this.sampleHeader)
     this.input = null
   }
 
@@ -395,7 +394,6 @@ export default class {
       endLoop -= start
 
       if (sampleRate > 0) {
-        console.log(sample.length)
         const adjust = this.adjustSampleData(sample, sampleRate)
         sample = adjust.sample
         sampleRate *= adjust.multiply
