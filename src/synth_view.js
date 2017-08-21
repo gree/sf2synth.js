@@ -184,7 +184,7 @@ export default class View {
         select.addEventListener('change', event => {
           synth.programChange(channel, event.target.selectedIndex);
         }, false);
-        select.selectedIndex = synth.channelInstrument[i];
+        select.selectedIndex = synth.channels[i].instrument;
       }
 
       const notes = item.querySelectorAll(".key");
