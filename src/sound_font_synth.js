@@ -1,6 +1,5 @@
 import SynthesizerNote from "./sound_font_synth_note"
 import Parser from "./sf2"
-import View from "./synth_view"
 
 class Channel {
   instrument = 0
@@ -9,6 +8,20 @@ class Channel {
   pitchBendSensitivity = 0
   /** @type {<Array.<SynthesizerNote>} */
   currentNoteOn = []
+}
+
+class DummyView {
+  draw() {}
+  remove() {}
+  getInstrumentElement() {}
+  getKeyElement() {}
+  noteOn() {}
+  noteOff() {}
+  programChange() {}
+  volumeChange() {}
+  panpotChange() {}
+  pitchBend() {}
+  pitchBendSensitivity() {}
 }
 
 /**
@@ -41,7 +54,7 @@ export default class Synthesizer {
     /** @type {number} */
     this.masterVolume = 16384
     /** @type {View} */
-    this.view = new View()
+    this.view = new DummyView()
   }
 
     /**
@@ -108,14 +121,6 @@ export default class Synthesizer {
     this.bufSrc.disconnect(0)
     this.gainMaster.disconnect(0)
     this.compressor.disconnect(0)
-  }
-
-  drawSynth() {
-    return this.view.draw(this)
-  }
-
-  removeSynth() {
-    this.view.remove()
   }
 
   /**
@@ -207,12 +212,6 @@ export default class Synthesizer {
    */
   programChange(channelNumber, instrument) {
     this.view.programChange(channelNumber, instrument)
-
-    // リズムトラックは無視する
-    if (channelNumber === 9) {
-      return
-    }
-
     this.channels[channelNumber].instrument = instrument
   }
 

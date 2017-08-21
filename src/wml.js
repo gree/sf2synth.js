@@ -1,4 +1,5 @@
 import Synthesizer from "./sound_font_synth"
+import View from "./synth_view"
 import MessageHandler from "./message_handler"
 
 /**
@@ -67,7 +68,8 @@ WebMidiLink.prototype.loadSoundFont = function(input) {
 
   if (!this.synth) {
     synth = this.synth = new Synthesizer(input);
-    document.body.appendChild(synth.drawSynth());
+    var view = this.view = new View()
+    document.body.appendChild(view.draw(synth));
     this.midiMessageHandler.synth = synth;
     synth.init();
     synth.start();
