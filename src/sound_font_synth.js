@@ -74,7 +74,7 @@ export default class Synthesizer {
 
     for (let i = 0; i < 16; ++i) {
       this.channels.push(new Channel())
-      this.programChange(i, i)
+      this.programChange(i, i !== 9 ? i : 0)
       this.volumeChange(i, 0x64)
       this.panpotChange(i, 0x40)
       this.pitchBend(i, 0x00, 0x40); // 8192
@@ -124,7 +124,7 @@ export default class Synthesizer {
    * @param {number} velocity 強さ.
    */
   noteOn(channelNumber, key, velocity) {
-    const bank = this.bankSet[channel === 9 ? 128 : this.bank]
+    const bank = this.bankSet[channelNumber === 9 ? 128 : this.bank]
     const channel = this.channels[channelNumber]
     const instrument = bank[channel.instrument]
 
@@ -159,7 +159,7 @@ export default class Synthesizer {
     panpot /= panpot < 0 ? 64 : 63
 
     // create note information
-    instrumentKey['channel'] = channel
+    instrumentKey['channel'] = channelNumber
     instrumentKey['key'] = key
     instrumentKey['velocity'] = velocity
     instrumentKey['panpot'] = panpot
