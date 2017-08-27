@@ -1,6 +1,4 @@
-import { readString } from "./helper"
 import { GeneratorEnumeratorTable } from "./constants"
-import Stream from "./stream"
 
 export class VersionTag {
   /** @type {number} */
@@ -78,7 +76,7 @@ export class ModulatorList {
       // Amount
       t.value = {
         code: code,
-        amount: stream.readAt(0) | (stream.readAt(1) << 8) << 16 >> 16,
+        amount: stream.readAt(0) | (stream.readAt(1) << 8),
         lo: stream.readByte(),
         hi: stream.readByte()
       }
@@ -116,7 +114,7 @@ export class GeneratorList {
   value
 
   static parse(stream) {
-    const t = new ModulatorList
+    const t = new ModulatorList()
     
     const code = stream.readWORD()
     const key = GeneratorEnumeratorTable[code]
@@ -202,8 +200,7 @@ export class Sample {
   /** @type {SampleLink} */
   sampleType
 
-  static parse(data, offset) {
-    const stream = new Stream(data, offset)
+  static parse(stream) {
     const s = new Sample()
 
     s.sampleName = stream.readString(20)
@@ -220,7 +217,6 @@ export class Sample {
     s.startLoop -= s.start
     s.endLoop -= s.start
 
-    s.size = stream.ip - offset
     return s
   }
 }

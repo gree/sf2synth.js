@@ -4,35 +4,37 @@ import { readString } from "./helper"
 import Stream from "./stream"
 
 export default class {
+  /** @type {ByteArray} */
+  input
+  /** @type {(Object|undefined)} */
+  parserOption
+  /** @type {Array.<Object>} */
+  presetHeader
+  /** @type {Array.<Object>} */
+  presetZone
+  /** @type {Array.<Object>} */
+  presetZoneModulator
+  /** @type {Array.<Object>} */
+  presetZoneGenerator
+  /** @type {Array.<Object>} */
+  instrument
+  /** @type {Array.<Object>} */
+  instrumentZone
+  /** @type {Array.<Object>} */
+  instrumentZoneModulator
+  /** @type {Array.<Object>} */
+  instrumentZoneGenerator
+  /** @type {Array.<Object>} */
+  sampleHeader
+
   /**
    * @param {ByteArray} input
    * @param {Object=} opt_params
    * @constructor
    */
   constructor(input, opt_params = {}) {
-    /** @type {ByteArray} */
     this.input = input
-    /** @type {(Object|undefined)} */
     this.parserOption = opt_params.parserOption
-
-    /** @type {Array.<Object>} */
-    this.presetHeader
-    /** @type {Array.<Object>} */
-    this.presetZone
-    /** @type {Array.<Object>} */
-    this.presetZoneModulator
-    /** @type {Array.<Object>} */
-    this.presetZoneGenerator
-    /** @type {Array.<Object>} */
-    this.instrument
-    /** @type {Array.<Object>} */
-    this.instrumentZone
-    /** @type {Array.<Object>} */
-    this.instrumentZoneModulator
-    /** @type {Array.<Object>} */
-    this.instrumentZoneGenerator
-    /** @type {Array.<Object>} */
-    this.sampleHeader
   }
 
   parse() {
@@ -125,46 +127,8 @@ export default class {
     this.instrumentZone = parseIbag(parser.getChunk(5), data)
     this.instrumentZoneModulator = parseImod(parser.getChunk(6), data)
     this.instrumentZoneGenerator = parseIgen(parser.getChunk(7), data)
-    this.parseShdr(parser.getChunk(8), data)
-  }
-
-  /**
-   * @param {Chunk} chunk
-   */
-  parseShdr(chunk, data) {
-    /** @type {Array.<Object>} */
-    const samples = this.sample = []
-    /** @type {Array.<Object>} */
-    const sampleHeader = this.sampleHeader = []
-
-    let ip = chunk.offset
-    const size = chunk.offset + chunk.size
-
-    // check parse target
-    if (chunk.type !== 'shdr') {
-      throw new Error('invalid chunk type:' + chunk.type)
-    }
-
-    while (ip < size) {
-      let header = Sample.parse(data, ip)
-      ip += header.size
-  
-      let sample = new Int16Array(new Uint8Array(data.subarray(
-        this.samplingData.offset + header.start * 2,
-        this.samplingData.offset + header.end   * 2
-      )).buffer)
-
-      if (header.sampleRate > 0) {
-        const adjust = adjustSampleData(sample, header.sampleRate)
-        sample = adjust.sample
-        header.sampleRate *= adjust.multiply
-        header.startLoop *= adjust.multiply
-        header.endLoop *= adjust.multiply
-      }
-
-      samples.push(sample)
-      sampleHeader.push(header)
-    }
+    this.sampleHeader = parseShdr(parser.getChunk(8), data)
+    this.sample = loadSample(this.sampleHeader, this.samplingData.offset, data)
   }
 
   createInstrument() {
@@ -288,7 +252,6 @@ function parseInfoList(chunk, data) {
   // read structure
   const parser = new Parser(data, {'index': ip, 'length': chunk.size - 4})
   parser.parse()
-  const list = parser.chunkList
   const info = {}
   for (let p of parser.chunkList) {
     const { offset, size, type } = p
@@ -360,6 +323,7 @@ const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", stream => Mod
 const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", stream => ModulatorList.parse(stream))
 const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", stream => GeneratorList.parse(stream))
 const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", stream => GeneratorList.parse(stream))
+const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => Sample.parse(stream))
 
 function adjustSampleData(sample, sampleRate) {
   let multiply = 1
@@ -493,4 +457,23 @@ function createPresetModulator(zone, index, presetZoneModulator) {
     modulator: modgen.modgen,
     modulatorInfo: modgen.modgenInfo
   }
+}
+
+function loadSample(sampleHeader, samplingDataOffset, data) {
+  const samples = []
+  for (let header of sampleHeader) {
+    let sample = new Int16Array(new Uint8Array(data.subarray(
+      samplingDataOffset + header.start * 2,
+      samplingDataOffset + header.end   * 2
+    )).buffer)
+    if (header.sampleRate > 0) {
+      const adjust = adjustSampleData(sample, header.sampleRate)
+      sample = adjust.sample
+      header.sampleRate *= adjust.multiply
+      header.startLoop *= adjust.multiply
+      header.endLoop *= adjust.multiply
+    }
+    samples.push(sample)
+  }
+  return samples
 }
