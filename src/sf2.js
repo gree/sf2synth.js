@@ -332,185 +332,34 @@ function parseSdtaList(chunk, data) {
 /**
  * @param {Chunk} chunk
  * @param {ByteArray} data
+ * @param {string} type
  * @return {Array.<Object>}
  */
-function parsePhdr(chunk, data) {
-  const presetHeader = []
-  const stream = new Stream(data, chunk.offset)
-  const size = chunk.offset + chunk.size
+function parseChunk(chunk, data, type, factory) {
+  const result = []
 
-  // check parse target
-  if (chunk.type !== 'phdr') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-  while (stream.ip < size) {
-    presetHeader.push(PresetHeader.parse(stream))
-  }
-
-  return presetHeader
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parsePbag(chunk, data) {
-  /** @type {Array.<Object>} */
-  const presetZone = []
-  const stream = new Stream(data, chunk.offset)
-  const size = chunk.offset + chunk.size
-
-  // check parse target
-  if (chunk.type !== 'pbag') {
+  if (chunk.type !== type) {
     throw new Error('invalid chunk type:'  + chunk.type)
   }
-
-  while (stream.ip < size) {
-    presetZone.push(PresetBag.parse(stream))
-  }
-
-  return presetZone
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parsePmod(chunk, data) {
-  // check parse target
-  if (chunk.type !== 'pmod') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-  return parseModulator(chunk, data)
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parsePgen(chunk, data) {
-  // check parse target
-  if (chunk.type !== 'pgen') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-  return parseGenerator(chunk, data)
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parseModulator(chunk, data) {
-  /** @type {Array.<Object>} */
-  const output = []
+  
   const stream = new Stream(data, chunk.offset)
   const size = chunk.offset + chunk.size
-
+  
   while (stream.ip < size) {
-    output.push(ModulatorList.parse(stream))
+    result.push(factory(stream))
   }
 
-  return output
+  return result
 }
 
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parseInst(chunk, data) {
-  /** @type {Array.<Object>} */
-  const instrument = []
-  const stream = new Stream(data, chunk.offset)
-  const size = chunk.offset + chunk.size
-
-  // check parse target
-  if (chunk.type !== 'inst') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-  while (stream.ip < size) {
-    instrument.push(Instrument.parse(stream))
-  }
-
-  return instrument
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parseIbag(chunk, data) {
-  /** @type {Array.<Object>} */
-  const instrumentZone = []
-  const stream = new Stream(data, chunk.offset)
-  const size = chunk.offset + chunk.size
-
-  // check parse target
-  if (chunk.type !== 'ibag') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-
-  while (stream.ip < size) {
-    instrumentZone.push(InstrumentBag.parse(stream))
-  }
-
-  return instrumentZone
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parseImod(chunk, data) {
-  // check parse target
-  if (chunk.type !== 'imod') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-  return parseModulator(chunk, data)
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parseIgen(chunk, data) {
-  // check parse target
-  if (chunk.type !== 'igen') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-  return parseGenerator(chunk, data)
-}
-
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Array.<Object>}
- */
-function parseGenerator(chunk, data) {
-  /** @type {Array.<Object>} */
-  const output = []
-  const stream = new Stream(data, chunk.offset)
-  const size = chunk.offset + chunk.size
-
-  while (stream.ip < size) {
-    output.push(GeneratorList.parse(stream))
-  }
-
-  return output
-}
+const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", stream => PresetHeader.parse(stream))
+const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", stream => PresetBag.parse(stream))
+const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", stream => Instrument.parse(stream))
+const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", stream => InstrumentBag.parse(stream))
+const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", stream => ModulatorList.parse(stream))
+const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", stream => ModulatorList.parse(stream))
+const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", stream => GeneratorList.parse(stream))
+const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", stream => GeneratorList.parse(stream))
 
 function adjustSampleData(sample, sampleRate) {
   let multiply = 1
