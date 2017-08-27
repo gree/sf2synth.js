@@ -1,5 +1,6 @@
 import SynthesizerNote from "./sound_font_synth_note"
 import Parser from "./sf2"
+import SoundFont from "./sound_font"
 
 class Channel {
   instrument = 0
@@ -35,8 +36,6 @@ export default class Synthesizer {
     this.parser
     /** @type {number} */
     this.bank = 0
-    /** @type {Array.<Array.<Object>>} */
-    this.bankSet
     /** @type {number} */
     this.bufferSize = 1024
     /** @type {AudioContext} */
@@ -82,8 +81,7 @@ export default class Synthesizer {
   }
 
   init() {
-    const parser = new Parser(this.input)
-    this.bankSet = createAllInstruments(parser)
+    this.refreshInstruments(this.input)
 
     for (let i = 0; i < 16; ++i) {
       this.channels.push(new Channel())
@@ -100,8 +98,10 @@ export default class Synthesizer {
    */
   refreshInstruments(input) {
     this.input = input
+
     const parser = new Parser(input)
-    this.bankSet = createAllInstruments(parser)
+    parser.parse()
+    this.soundFont = new SoundFont(parser)
   }
 
   start() {
@@ -130,45 +130,11 @@ export default class Synthesizer {
    */
   noteOn(channelNumber, key, velocity) {
     const bankNumber = channelNumber === 9 ? 128 : this.bank
-    const bank = this.bankSet[bankNumber]
     const channel = this.channels[channelNumber]
 
-    if (!bank) {
-      console.warn(
-        "bank not found: bank=%s instrument=%s channel=%s",
-        bankNumber,
-        channel.instrument,
-        channelNumber
-      )
-      return
-    }
+    const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key)
 
-    const instrument = bank[channel.instrument]
-
-    this.view.noteOn(channelNumber, key)
-
-    if (!instrument) {
-      // TODO
-      console.warn(
-        "instrument not found: bank=%s instrument=%s channel=%s",
-        bankNumber,
-        channel.instrument,
-        channelNumber
-      )
-      return
-    }
-
-    const instrumentKey = instrument[key]
-
-    if (!(instrumentKey)) {
-      // TODO
-      console.warn(
-        "instrument not found: bank=%s instrument=%s channel=%s key=%s",
-        bankNumber,
-        channel.instrument,
-        channelNumber,
-        key
-      )
+    if (!instrumentKey) {
       return
     }
 
@@ -188,6 +154,8 @@ export default class Synthesizer {
     const note = new SynthesizerNote(this.ctx, this.gainMaster, instrumentKey)
     note.noteOn()
     channel.currentNoteOn.push(note)
+
+    this.view.noteOn(channelNumber, key)
   }
 
   /**
@@ -197,21 +165,15 @@ export default class Synthesizer {
    */
   noteOff(channelNumber, key, velocity) {
     const bankNumber = channelNumber === 9 ? 128 : this.bank
-    const bank = this.bankSet[bankNumber]
-
-    if (!bank) {
-      return
-    }
-
     const channel = this.channels[channelNumber]
-    const instrument = bank[channel.instrument]
-    const currentNoteOn = channel.currentNoteOn
 
-    this.view.noteOff(channelNumber, key)
+    const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key)
 
-    if (!instrument) {
+    if (!instrumentKey) {
       return
     }
+    
+    const currentNoteOn = channel.currentNoteOn
 
     for (let i = 0, il = currentNoteOn.length; i < il; ++i) {
       const note = currentNoteOn[i]
@@ -222,6 +184,8 @@ export default class Synthesizer {
         --il
       }
     }
+    
+    this.view.noteOff(channelNumber, key)
   }
 
   /**
@@ -297,127 +261,4 @@ export default class Synthesizer {
   resetAllControl(channelNumber) {
     this.pitchBend(channelNumber, 0x00, 0x40); // 8192
   }
-}
-
-function createAllInstruments(parser) {
-  parser.parse()
-  const presets = parser.createPreset()
-  const instruments = parser.createInstrument()
-  const banks = []
-
-  for (let i = 0, il = presets.length; i < il; ++i) {
-    const preset = presets[i]
-    /** @type {number} */
-    const presetNumber = preset.header.preset
-
-    if (typeof preset.instrument !== 'number') {
-      continue
-    }
-
-    /** @type {Object} */
-    const instrument = instruments[preset.instrument]
-    if (instrument.name.replace(/\0*$/, '') === 'EOI') {
-      continue
-    }
-
-    // select bank
-    if (banks[preset.header.bank] === void 0) {
-      banks[preset.header.bank] = []
-    }
-    const bank = banks[preset.header.bank]
-    bank[presetNumber] = []
-    bank[presetNumber].name = preset.name
-
-    for (let j = 0, jl = instrument.info.length; j < jl; ++j) {
-      createNoteInfo(parser, instrument.info[j], bank[presetNumber])
-    }
-  }
-
-  return banks
-}
-
-function createNoteInfo(parser, info, preset) {
-  const { generator } = info
-
-  if (generator['keyRange'] === void 0 || generator['sampleID'] === void 0) {
-    return
-  }
-
-  const volAttack  = getModGenAmount(generator, 'attackVolEnv',  -12000)
-  const volDecay   = getModGenAmount(generator, 'decayVolEnv',   -12000)
-  const volSustain = getModGenAmount(generator, 'sustainVolEnv')
-  const volRelease = getModGenAmount(generator, 'releaseVolEnv', -12000)
-  const modAttack  = getModGenAmount(generator, 'attackModEnv',  -12000)
-  const modDecay   = getModGenAmount(generator, 'decayModEnv',   -12000)
-  const modSustain = getModGenAmount(generator, 'sustainModEnv')
-  const modRelease = getModGenAmount(generator, 'releaseModEnv', -12000)
-
-  const tune = (
-    getModGenAmount(generator, 'coarseTune') +
-    getModGenAmount(generator, 'fineTune') / 100
-  )
-  const scale = getModGenAmount(generator, 'scaleTuning', 100) / 100
-  const freqVibLFO = getModGenAmount(generator, 'freqVibLFO')
-  const sampleId = getModGenAmount(generator, 'sampleID')
-  const sampleHeader = parser.sampleHeader[sampleId]
-  const basePitch = tune + (sampleHeader.pitchCorrection / 100) - getModGenAmount(generator, 'overridingRootKey', sampleHeader.originalPitch)
-  
-  const baseObj = {
-    sample: parser.sample[sampleId],
-    sampleRate: sampleHeader.sampleRate,
-    sampleName: sampleHeader.sampleName,
-    modEnvToPitch: getModGenAmount(generator, 'modEnvToPitch') / 100,
-    scaleTuning: scale,
-    start:
-      getModGenAmount(generator, 'startAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'startAddrsOffset'),
-    end:
-      getModGenAmount(generator, 'endAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'endAddrsOffset'),
-    loopStart: (
-      //(sampleHeader.startLoop - sampleHeader.start) +
-      (sampleHeader.startLoop) +
-        getModGenAmount(generator, 'startloopAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'startloopAddrsOffset')
-      ),
-    loopEnd: (
-      //(sampleHeader.endLoop - sampleHeader.start) +
-      (sampleHeader.endLoop) +
-        getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'endloopAddrsOffset')
-      ),
-    volAttack:  Math.pow(2, volAttack / 1200),
-    volDecay:   Math.pow(2, volDecay / 1200),
-    volSustain: volSustain / 1000,
-    volRelease: Math.pow(2, volRelease / 1200),
-    modAttack:  Math.pow(2, modAttack / 1200),
-    modDecay:   Math.pow(2, modDecay / 1200),
-    modSustain: modSustain / 1000,
-    modRelease: Math.pow(2, modRelease / 1200),
-    initialFilterFc: getModGenAmount(generator, 'initialFilterFc', 13500),
-    modEnvToFilterFc: getModGenAmount(generator, 'modEnvToFilterFc'),
-    initialFilterQ: getModGenAmount(generator, 'initialFilterQ'),
-    freqVibLFO: freqVibLFO ? Math.pow(2, freqVibLFO / 1200) * 8.176 : void 0
-  }
-
-  for (let i = generator['keyRange'].lo, il = generator['keyRange'].hi; i <= il; ++i)  {
-    if (preset[i]) {
-      continue
-    }
-
-    preset[i] = {
-      ...baseObj,
-      basePlaybackRate: Math.pow(Math.pow(2, 1/12), (i + basePitch) * scale)
-    }
-  }
-}
-
-/**
- * @param {Object} generator
- * @param {string} enumeratorType
- * @param {number=} opt_default
- * @returns {number}
- */
-function getModGenAmount(generator, enumeratorType, opt_default = 0) {
-  return generator[enumeratorType] ? generator[enumeratorType].amount : opt_default
 }

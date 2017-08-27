@@ -199,7 +199,7 @@ function mergeProgramNames(left, right) {
 export default class View {
   draw(synth) {
     const element = this.element = render(`<div id="root"></div>`);
-    const programNames = mergeProgramNames(programNamesFromBankSet(synth.bankSet), ProgramNames)
+    const programNames = mergeProgramNames(programNamesFromBankSet(synth.soundFont.bankSet), ProgramNames)
 
     for (let i = 0; i < 16; ++i) {
       const bank = i !== 9 ? 0 : 128
