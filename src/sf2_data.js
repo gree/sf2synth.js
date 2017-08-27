@@ -1,5 +1,6 @@
 import { readString } from "./helper"
 import { GeneratorEnumeratorTable } from "./constants"
+import Stream from "./stream"
 
 export class VersionTag {
   /** @type {number} */
@@ -24,17 +25,15 @@ export class PresetHeader {
   /** @type {number} */
   morphology
 
-  static parse(data, offset) {
+  static parse(stream) {
     const p = new PresetHeader()
-    let ip = offset
-    p.presetName = readString(data, ip, ip += 20)
-    p.preset = data[ip++] | (data[ip++] << 8)
-    p.bank = data[ip++] | (data[ip++] << 8)
-    p.presetBagIndex = data[ip++] | (data[ip++] << 8)
-    p.library = (data[ip++] | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)) >>> 0
-    p.genre = (data[ip++] | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)) >>> 0
-    p.morphology = (data[ip++] | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)) >>> 0
-    p.size = ip - offset
+    p.presetName = stream.readString(20)
+    p.preset = stream.readWORD()
+    p.bank = stream.readWORD()
+    p.presetBagIndex = stream.readWORD()
+    p.library = stream.readDWORD()
+    p.genre = stream.readDWORD()
+    p.morphology = stream.readDWORD()
     return p
   }
 }
@@ -45,12 +44,10 @@ export class PresetBag {
   /** @type {number} */
   presetModulatorIndex
 
-  static parse(data, offset) {
+  static parse(stream) {
     const p = new PresetBag()
-    let ip = offset
-    p.presetGeneratorIndex = data[ip++] | (data[ip++] << 8)
-    p.presetModulatorIndex = data[ip++] | (data[ip++] << 8)
-    p.size = ip - offset
+    p.presetGeneratorIndex = stream.readWORD()
+    p.presetModulatorIndex = stream.readWORD()
     return p
   }
 }
@@ -67,12 +64,11 @@ export class ModulatorList {
   /** @type {Generator} */
   transOper
 
-  static parse(data, offset) {
-    const t = new ModulatorList
-    let ip = offset
+  static parse(stream) {
+    const t = new ModulatorList()
 
-    t.sourceOper += data[ip++] | (data[ip++] << 8)
-    const code = data[ip++] | (data[ip++] << 8)
+    t.sourceOper = stream.readWORD()
+    const code = stream.readWORD()
     t.destinationOper = code
     
     const key = GeneratorEnumeratorTable[code]
@@ -82,9 +78,9 @@ export class ModulatorList {
       // Amount
       t.value = {
         code: code,
-        amount: data[ip] | (data[ip+1] << 8) << 16 >> 16,
-        lo: data[ip++],
-        hi: data[ip++]
+        amount: stream.readAt(0) | (stream.readAt(1) << 8) << 16 >> 16,
+        lo: stream.readByte(),
+        hi: stream.readByte()
       }
     } else {
       // Amount
@@ -94,22 +90,21 @@ export class ModulatorList {
         case 'keynum': /* FALLTHROUGH */
         case 'velocity':
           t.value = {
-            lo: data[ip++],
-            hi: data[ip++]
+            lo: stream.readByte(),
+            hi: stream.readByte()
           }
           break
         default:
           t.value = {
-            amount: data[ip++] | (data[ip++] << 8) << 16 >> 16
+            amount: stream.readWORD()
           }
           break
       }
     }
     
-    t.amountSourceOper = data[ip++] | (data[ip++] << 8)
-    t.transOper = data[ip++] | (data[ip++] << 8)
+    t.amountSourceOper = stream.readWORD()
+    t.transOper = stream.readWORD()
 
-    t.size = ip - offset
     return t
   }
 }
@@ -120,20 +115,19 @@ export class GeneratorList {
   /** @type {Object} */
   value
 
-  static parse(data, offset) {
+  static parse(stream) {
     const t = new ModulatorList
-    let ip = offset
     
-    const code = data[ip++] | (data[ip++] << 8)
+    const code = stream.readWORD()
     const key = GeneratorEnumeratorTable[code]
     t.type = key
 
     if (key === void 0) {
       t.value = {
         code,
-        amount: data[ip] | (data[ip+1] << 8) << 16 >> 16,
-        lo: data[ip++],
-        hi: data[ip++]
+        amount: stream.readAt(0) | (stream.readAt(1) << 8),
+        lo: stream.readByte(),
+        hi: stream.readByte()
       }
     } else {
       switch (key) {
@@ -142,19 +136,18 @@ export class GeneratorList {
         case 'velRange': /* FALLTHROUGH */
         case 'velocity':
           t.value = {
-            lo: data[ip++],
-            hi: data[ip++]
+            lo: stream.readByte(),
+            hi: stream.readByte()
           }
           break
         default:
           t.value = {
-            amount: data[ip++] | (data[ip++] << 8) << 16 >> 16
+            amount: stream.readWORD()
           }
           break
       }
     }
 
-    t.size = ip - offset
     return t
   }
 }
@@ -165,12 +158,10 @@ export class Instrument {
   /** @type {number} */
   instrumentBagIndex
   
-  static parse(data, offset) {
+  static parse(stream) {
     const t = new Instrument()
-    let ip = offset
-    t.instrumentName = readString(data, ip, ip += 20)
-    t.instrumentBagIndex = data[ip++] | (data[ip++] << 8)
-    t.size = ip - offset
+    t.instrumentName = stream.readString(20)
+    t.instrumentBagIndex = stream.readWORD()
     return t
   }
 }
@@ -181,12 +172,10 @@ export class InstrumentBag {
   /** @type {number} */
   instrumentModulatorIndex
   
-  static parse(data, offset) {
+  static parse(stream) {
     const t = new InstrumentBag()
-    let ip = offset
-    t.instrumentGeneratorIndex = data[ip++] | (data[ip++] << 8)
-    t.instrumentModulatorIndex = data[ip++] | (data[ip++] << 8)
-    t.size = ip - offset
+    t.instrumentGeneratorIndex = stream.readWORD()
+    t.instrumentModulatorIndex = stream.readWORD()
     return t
   }
 }
@@ -214,33 +203,24 @@ export class Sample {
   sampleType
 
   static parse(data, offset) {
+    const stream = new Stream(data, offset)
     const s = new Sample()
-    let ip = offset
-    s.sampleName = readString(data, ip, ip += 20)
-    s.start = (
-      (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-    ) >>> 0
-    s.end = (
-      (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-    ) >>> 0
-    s.startLoop = (
-      (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-    ) >>> 0
-    s.endLoop =  (
-      (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-    ) >>> 0
-    s.sampleRate = (
-      (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-    ) >>> 0
-    s.originalPitch = data[ip++]
-    s.pitchCorrection = (data[ip++] << 24) >> 24
-    s.sampleLink = data[ip++] | (data[ip++] << 8)
-    s.sampleType = data[ip++] | (data[ip++] << 8)
+
+    s.sampleName = stream.readString(20)
+    s.start = stream.readDWORD()
+    s.end = stream.readDWORD()
+    s.startLoop = stream.readDWORD()
+    s.endLoop = stream.readDWORD()
+    s.sampleRate = stream.readDWORD()
+    s.originalPitch = stream.readByte()
+    s.pitchCorrection = stream.readByte()
+    s.sampleLink = stream.readWORD()
+    s.sampleType = stream.readWORD()
 
     s.startLoop -= s.start
     s.endLoop -= s.start
 
-    s.size = ip - offset
+    s.size = stream.ip - offset
     return s
   }
 }

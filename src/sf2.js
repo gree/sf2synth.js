@@ -1,7 +1,7 @@
 import { Chunk, Parser } from "./riff"
 import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./sf2_data"
 import { readString } from "./helper"
-import { GeneratorEnumeratorTable } from "./constants"
+import Stream from "./stream"
 
 export default class {
   /**
@@ -336,8 +336,7 @@ function parseSdtaList(chunk, data) {
  */
 function parsePhdr(chunk, data) {
   const presetHeader = []
-
-  let ip = chunk.offset
+  const stream = new Stream(data, chunk.offset)
   const size = chunk.offset + chunk.size
 
   // check parse target
@@ -345,10 +344,8 @@ function parsePhdr(chunk, data) {
     throw new Error('invalid chunk type:' + chunk.type)
   }
 
-  while (ip < size) {
-    const p = PresetHeader.parse(data, ip)
-    presetHeader.push(p)
-    ip += p.size
+  while (stream.ip < size) {
+    presetHeader.push(PresetHeader.parse(stream))
   }
 
   return presetHeader
@@ -362,8 +359,7 @@ function parsePhdr(chunk, data) {
 function parsePbag(chunk, data) {
   /** @type {Array.<Object>} */
   const presetZone = []
-
-  let ip = chunk.offset
+  const stream = new Stream(data, chunk.offset)
   const size = chunk.offset + chunk.size
 
   // check parse target
@@ -371,10 +367,8 @@ function parsePbag(chunk, data) {
     throw new Error('invalid chunk type:'  + chunk.type)
   }
 
-  while (ip < size) {
-    const p = PresetBag.parse(data, ip)
-    ip += p.size
-    presetZone.push(p)
+  while (stream.ip < size) {
+    presetZone.push(PresetBag.parse(stream))
   }
 
   return presetZone
@@ -413,15 +407,13 @@ function parsePgen(chunk, data) {
  * @return {Array.<Object>}
  */
 function parseModulator(chunk, data) {
-  let ip = chunk.offset
-  const size = chunk.offset + chunk.size
   /** @type {Array.<Object>} */
   const output = []
+  const stream = new Stream(data, chunk.offset)
+  const size = chunk.offset + chunk.size
 
-  while (ip < size) {
-    const mod = ModulatorList.parse(data, ip)
-    ip += mod.size
-    output.push(mod)
+  while (stream.ip < size) {
+    output.push(ModulatorList.parse(stream))
   }
 
   return output
@@ -435,8 +427,7 @@ function parseModulator(chunk, data) {
 function parseInst(chunk, data) {
   /** @type {Array.<Object>} */
   const instrument = []
-
-  let ip = chunk.offset
+  const stream = new Stream(data, chunk.offset)
   const size = chunk.offset + chunk.size
 
   // check parse target
@@ -444,10 +435,8 @@ function parseInst(chunk, data) {
     throw new Error('invalid chunk type:' + chunk.type)
   }
 
-  while (ip < size) {
-    const i = Instrument.parse(data, ip)
-    ip += i.size
-    instrument.push(i)
+  while (stream.ip < size) {
+    instrument.push(Instrument.parse(stream))
   }
 
   return instrument
@@ -461,8 +450,7 @@ function parseInst(chunk, data) {
 function parseIbag(chunk, data) {
   /** @type {Array.<Object>} */
   const instrumentZone = []
-
-  let ip = chunk.offset
+  const stream = new Stream(data, chunk.offset)
   const size = chunk.offset + chunk.size
 
   // check parse target
@@ -471,10 +459,8 @@ function parseIbag(chunk, data) {
   }
 
 
-  while (ip < size) {
-    const b = InstrumentBag.parse(data, ip)
-    ip += b.size
-    instrumentZone.push(b)
+  while (stream.ip < size) {
+    instrumentZone.push(InstrumentBag.parse(stream))
   }
 
   return instrumentZone
@@ -516,14 +502,11 @@ function parseIgen(chunk, data) {
 function parseGenerator(chunk, data) {
   /** @type {Array.<Object>} */
   const output = []
-
-  let ip = chunk.offset
+  const stream = new Stream(data, chunk.offset)
   const size = chunk.offset + chunk.size
 
-  while (ip < size) {
-    const gen = GeneratorList.parse(data, ip)
-    ip += gen.size
-    output.push(gen)
+  while (stream.ip < size) {
+    output.push(GeneratorList.parse(stream))
   }
 
   return output
