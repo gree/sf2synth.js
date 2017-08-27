@@ -67,7 +67,7 @@ export default class {
     }
 
     // check signature
-    const signature = String.fromCharCode(data[ip++], data[ip++], data[ip++], data[ip++])
+    const signature = readString(data, ip, ip += 4)
     if (signature !== 'sfbk') {
       throw new Error('invalid signature:' + signature)
     }
@@ -104,7 +104,7 @@ export default class {
     }
 
     // check signature
-    const signature = String.fromCharCode(data[ip++], data[ip++], data[ip++], data[ip++])
+    const signature = readString(data, ip, ip += 4)
     if (signature !== 'pdta') {
       throw new Error('invalid signature:' + signature)
     }
@@ -147,7 +147,7 @@ export default class {
     }
 
     while (ip < size) {
-      const sampleName = String.fromCharCode.apply(null, data.subarray(ip, ip += 20))
+      const sampleName = readString(data, ip, ip += 20)
       const start = (
         (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
       ) >>> 0
@@ -349,10 +349,11 @@ const GeneratorEnumeratorTable = [
   'overridingRootKey'
 ]
 
-function readString(data, offset, size) {
-  let str = ""
-  for (let i = offset; i < offset + size; i++) {
-    str += String.fromCharCode(data[i])
+function readString(data, start, end) {
+  const str = String.fromCharCode.apply(null, data.subarray(start, end))
+  const nullLocation = str.indexOf("\u0000")
+  if (nullLocation > 0) {
+    return str.substr(0, nullLocation)
   }
   return str
 }
@@ -385,7 +386,7 @@ function parseInfoList(chunk, data) {
   }
 
   // check signature
-  const signature = String.fromCharCode(data[ip++], data[ip++], data[ip++], data[ip++])
+  const signature = readString(data, ip, ip += 4)
   if (signature !== 'INFO') {
     throw new Error('invalid signature:' + signature)
   }
@@ -398,7 +399,7 @@ function parseInfoList(chunk, data) {
   for (let p of parser.chunkList) {
     const { offset, size, type } = p
     const name = InfoNameTable[type] || type
-    info[name] = readString(data, offset, size)
+    info[name] = readString(data, offset, offset + size)
   }
 
   return info
@@ -418,7 +419,7 @@ function parseSdtaList(chunk, data) {
   }
 
   // check signature
-  const signature = String.fromCharCode(data[ip++], data[ip++], data[ip++], data[ip++])
+  const signature = readString(data, ip, ip += 4)
   if (signature !== 'sdta') {
     throw new Error('invalid signature:' + signature)
   }
@@ -451,7 +452,7 @@ function parsePhdr(chunk, data) {
 
   while (ip < size) {
     presetHeader.push({
-      presetName: String.fromCharCode.apply(null, data.subarray(ip, ip += 20)),
+      presetName: readString(data, ip, ip += 20),
       preset: data[ip++] | (data[ip++] << 8),
       bank: data[ip++] | (data[ip++] << 8),
       presetBagIndex: data[ip++] | (data[ip++] << 8),
@@ -605,7 +606,7 @@ function parseInst(chunk, data) {
 
   while (ip < size) {
     instrument.push({
-      instrumentName: String.fromCharCode.apply(null, data.subarray(ip, ip += 20)),
+      instrumentName: readString(data, ip, ip += 20),
       instrumentBagIndex: data[ip++] | (data[ip++] << 8)
     })
   }
