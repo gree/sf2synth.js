@@ -358,57 +358,56 @@ function createNoteInfo(parser, info, preset) {
   )
   const scale = getModGenAmount(generator, 'scaleTuning', 100) / 100
   const freqVibLFO = getModGenAmount(generator, 'freqVibLFO')
+  const sampleId = getModGenAmount(generator, 'sampleID')
+  const sampleHeader = parser.sampleHeader[sampleId]
+  const basePitch = tune + (sampleHeader.pitchCorrection / 100) - getModGenAmount(generator, 'overridingRootKey', sampleHeader.originalPitch)
+  
+  const baseObj = {
+    sample: parser.sample[sampleId],
+    sampleRate: sampleHeader.sampleRate,
+    sampleName: sampleHeader.sampleName,
+    modEnvToPitch: getModGenAmount(generator, 'modEnvToPitch') / 100,
+    scaleTuning: scale,
+    start:
+      getModGenAmount(generator, 'startAddrsCoarseOffset') * 32768 +
+        getModGenAmount(generator, 'startAddrsOffset'),
+    end:
+      getModGenAmount(generator, 'endAddrsCoarseOffset') * 32768 +
+        getModGenAmount(generator, 'endAddrsOffset'),
+    loopStart: (
+      //(sampleHeader.startLoop - sampleHeader.start) +
+      (sampleHeader.startLoop) +
+        getModGenAmount(generator, 'startloopAddrsCoarseOffset') * 32768 +
+        getModGenAmount(generator, 'startloopAddrsOffset')
+      ),
+    loopEnd: (
+      //(sampleHeader.endLoop - sampleHeader.start) +
+      (sampleHeader.endLoop) +
+        getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
+        getModGenAmount(generator, 'endloopAddrsOffset')
+      ),
+    volAttack:  Math.pow(2, volAttack / 1200),
+    volDecay:   Math.pow(2, volDecay / 1200),
+    volSustain: volSustain / 1000,
+    volRelease: Math.pow(2, volRelease / 1200),
+    modAttack:  Math.pow(2, modAttack / 1200),
+    modDecay:   Math.pow(2, modDecay / 1200),
+    modSustain: modSustain / 1000,
+    modRelease: Math.pow(2, modRelease / 1200),
+    initialFilterFc: getModGenAmount(generator, 'initialFilterFc', 13500),
+    modEnvToFilterFc: getModGenAmount(generator, 'modEnvToFilterFc'),
+    initialFilterQ: getModGenAmount(generator, 'initialFilterQ'),
+    freqVibLFO: freqVibLFO ? Math.pow(2, freqVibLFO / 1200) * 8.176 : void 0
+  }
 
   for (let i = generator['keyRange'].lo, il = generator['keyRange'].hi; i <= il; ++i)  {
     if (preset[i]) {
       continue
     }
 
-    const sampleId = getModGenAmount(generator, 'sampleID')
-    const sampleHeader = parser.sampleHeader[sampleId]
     preset[i] = {
-      'sample': parser.sample[sampleId],
-      'sampleRate': sampleHeader.sampleRate,
-      'basePlaybackRate': Math.pow(
-        Math.pow(2, 1/12),
-        (
-          i -
-          getModGenAmount(generator, 'overridingRootKey', sampleHeader.originalPitch) +
-          tune + (sampleHeader.pitchCorrection / 100)
-        ) * scale
-      ),
-      'modEnvToPitch': getModGenAmount(generator, 'modEnvToPitch') / 100,
-      'scaleTuning': scale,
-      'start':
-        getModGenAmount(generator, 'startAddrsCoarseOffset') * 32768 +
-          getModGenAmount(generator, 'startAddrsOffset'),
-      'end':
-        getModGenAmount(generator, 'endAddrsCoarseOffset') * 32768 +
-          getModGenAmount(generator, 'endAddrsOffset'),
-      'loopStart': (
-        //(sampleHeader.startLoop - sampleHeader.start) +
-        (sampleHeader.startLoop) +
-          getModGenAmount(generator, 'startloopAddrsCoarseOffset') * 32768 +
-          getModGenAmount(generator, 'startloopAddrsOffset')
-        ),
-      'loopEnd': (
-        //(sampleHeader.endLoop - sampleHeader.start) +
-        (sampleHeader.endLoop) +
-          getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
-          getModGenAmount(generator, 'endloopAddrsOffset')
-        ),
-      'volAttack':  Math.pow(2, volAttack / 1200),
-      'volDecay':   Math.pow(2, volDecay / 1200),
-      'volSustain': volSustain / 1000,
-      'volRelease': Math.pow(2, volRelease / 1200),
-      'modAttack':  Math.pow(2, modAttack / 1200),
-      'modDecay':   Math.pow(2, modDecay / 1200),
-      'modSustain': modSustain / 1000,
-      'modRelease': Math.pow(2, modRelease / 1200),
-      'initialFilterFc': getModGenAmount(generator, 'initialFilterFc', 13500),
-      'modEnvToFilterFc': getModGenAmount(generator, 'modEnvToFilterFc'),
-      'initialFilterQ': getModGenAmount(generator, 'initialFilterQ'),
-      'freqVibLFO': freqVibLFO ? Math.pow(2, freqVibLFO / 1200) * 8.176 : void 0
+      ...baseObj,
+      basePlaybackRate: Math.pow(Math.pow(2, 1/12), (i + basePitch) * scale)
     }
   }
 }
