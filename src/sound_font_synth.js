@@ -129,8 +129,20 @@ export default class Synthesizer {
    * @param {number} velocity 強さ.
    */
   noteOn(channelNumber, key, velocity) {
-    const bank = this.bankSet[channelNumber === 9 ? 128 : this.bank]
+    const bankNumber = channelNumber === 9 ? 128 : this.bank
+    const bank = this.bankSet[bankNumber]
     const channel = this.channels[channelNumber]
+
+    if (!bank) {
+      console.warn(
+        "bank not found: bank=%s instrument=%s channel=%s",
+        bankNumber,
+        channel.instrument,
+        channelNumber
+      )
+      return
+    }
+
     const instrument = bank[channel.instrument]
 
     this.view.noteOn(channelNumber, key)
@@ -139,7 +151,7 @@ export default class Synthesizer {
       // TODO
       console.warn(
         "instrument not found: bank=%s instrument=%s channel=%s",
-        channelNumber === 9 ? 128 : this.bank,
+        bankNumber,
         channel.instrument,
         channelNumber
       )
@@ -152,7 +164,7 @@ export default class Synthesizer {
       // TODO
       console.warn(
         "instrument not found: bank=%s instrument=%s channel=%s key=%s",
-        channelNumber === 9 ? 128 : this.bank,
+        bankNumber,
         channel.instrument,
         channelNumber,
         key
@@ -184,7 +196,13 @@ export default class Synthesizer {
    * @param {number} velocity 強さ.
    */
   noteOff(channelNumber, key, velocity) {
-    const bank = this.bankSet[channel === 9 ? 128 : this.bank]
+    const bankNumber = channelNumber === 9 ? 128 : this.bank
+    const bank = this.bankSet[bankNumber]
+
+    if (!bank) {
+      return
+    }
+
     const channel = this.channels[channelNumber]
     const instrument = bank[channel.instrument]
     const currentNoteOn = channel.currentNoteOn
