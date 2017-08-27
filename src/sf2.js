@@ -62,34 +62,20 @@ export default class {
    * @param {ByteArray} data
    */
   parseRiffChunk(chunk, data) {
-    let ip = chunk.offset
+    const chunkList = getChunkList(chunk, data, "RIFF", "sfbk")
 
-    // check parse target
-    if (chunk.type !== 'RIFF') {
-      throw new Error('invalid chunk type:' + chunk.type)
-    }
-
-    // check signature
-    const signature = readString(data, ip, ip += 4)
-    if (signature !== 'sfbk') {
-      throw new Error('invalid signature:' + signature)
-    }
-
-    // read structure
-    const parser = new Parser(data, {'index': ip, 'length': chunk.size - 4})
-    parser.parse()
-    if (parser.getNumberOfChunks() !== 3) {
+    if (chunkList.length !== 3) {
       throw new Error('invalid sfbk structure')
     }
 
     // INFO-list
-    this.info = parseInfoList(parser.getChunk(0), data)
+    this.info = parseInfoList(chunkList[0], data)
 
     // sdta-list
-    this.samplingData = parseSdtaList(parser.getChunk(1), data)
+    this.samplingData = parseSdtaList(chunkList[1], data)
 
     // pdta-list
-    this.parsePdtaList(parser.getChunk(2), data)
+    this.parsePdtaList(chunkList[2], data)
   }
 
   /**
@@ -97,37 +83,22 @@ export default class {
    * @param {ByteArray} data
    */
   parsePdtaList(chunk, data) {
-    let ip = chunk.offset
-
-    // check parse target
-    if (chunk.type !== 'LIST') {
-      throw new Error('invalid chunk type:' + chunk.type)
-    }
-
-    // check signature
-    const signature = readString(data, ip, ip += 4)
-    if (signature !== 'pdta') {
-      throw new Error('invalid signature:' + signature)
-    }
-
-    // read structure
-    const parser = new Parser(data, {'index': ip, 'length': chunk.size - 4})
-    parser.parse()
+    const chunkList = getChunkList(chunk, data, "LIST", "pdta")
 
     // check number of chunks
-    if (parser.getNumberOfChunks() !== 9) {
+    if (chunkList.length !== 9) {
       throw new Error('invalid pdta chunk')
     }
 
-    this.presetHeader = parsePhdr(parser.getChunk(0), data)
-    this.presetZone = parsePbag(parser.getChunk(1), data)
-    this.presetZoneModulator = parsePmod(parser.getChunk(2), data)
-    this.presetZoneGenerator = parsePgen(parser.getChunk(3), data)
-    this.instrument = parseInst(parser.getChunk(4), data)
-    this.instrumentZone = parseIbag(parser.getChunk(5), data)
-    this.instrumentZoneModulator = parseImod(parser.getChunk(6), data)
-    this.instrumentZoneGenerator = parseIgen(parser.getChunk(7), data)
-    this.sampleHeader = parseShdr(parser.getChunk(8), data)
+    this.presetHeader = parsePhdr(chunkList[0], data)
+    this.presetZone = parsePbag(chunkList[1], data)
+    this.presetZoneModulator = parsePmod(chunkList[2], data)
+    this.presetZoneGenerator = parsePgen(chunkList[3], data)
+    this.instrument = parseInst(chunkList[4], data)
+    this.instrumentZone = parseIbag(chunkList[5], data)
+    this.instrumentZoneModulator = parseImod(chunkList[6], data)
+    this.instrumentZoneGenerator = parseIgen(chunkList[7], data)
+    this.sampleHeader = parseShdr(chunkList[8], data)
     this.sample = loadSample(this.sampleHeader, this.samplingData.offset, data)
   }
 
@@ -229,31 +200,37 @@ const InfoNameTable = {
   iver: "rom_version"
 }
 
+function getChunkList(chunk, data, expectedType, expectedSignature) {
+  // check parse target
+  if (chunk.type !== expectedType) {
+    throw new Error('invalid chunk type:' + chunk.type)
+  }
+
+  const stream = new Stream(data, chunk.offset)
+
+  // check signature
+  const signature = stream.readString(4)
+  if (signature !== expectedSignature) {
+    throw new Error('invalid signature:' + signature)
+  }
+
+  // read structure
+  const parser = new Parser(data, {'index': stream.ip, 'length': chunk.size - 4})
+  parser.parse()
+
+  return parser.chunkList
+}
+
 /**
  * @param {Chunk} chunk
  * @param {ByteArray} data
  * @return {Object}
  */
 function parseInfoList(chunk, data) {
-  /** @type {number} */
-  let ip = chunk.offset
-
-  // check parse target
-  if (chunk.type !== 'LIST') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-  // check signature
-  const signature = readString(data, ip, ip += 4)
-  if (signature !== 'INFO') {
-    throw new Error('invalid signature:' + signature)
-  }
-
-  // read structure
-  const parser = new Parser(data, {'index': ip, 'length': chunk.size - 4})
-  parser.parse()
   const info = {}
-  for (let p of parser.chunkList) {
+  const chunkList = getChunkList(chunk, data, "LIST", "INFO")
+
+  for (let p of chunkList) {
     const { offset, size, type } = p
     const name = InfoNameTable[type] || type
     info[name] = readString(data, offset, offset + size)
@@ -268,28 +245,13 @@ function parseInfoList(chunk, data) {
  * @return {Chunk}
  */
 function parseSdtaList(chunk, data) {
-  /** @type {number} */
-  let ip = chunk.offset
+  const chunkList = getChunkList(chunk, data, "LIST", "sdta")
 
-  // check parse target
-  if (chunk.type !== 'LIST') {
-    throw new Error('invalid chunk type:' + chunk.type)
-  }
-
-  // check signature
-  const signature = readString(data, ip, ip += 4)
-  if (signature !== 'sdta') {
-    throw new Error('invalid signature:' + signature)
-  }
-
-  // read structure
-  const parser = new Parser(data, {'index': ip, 'length': chunk.size - 4})
-  parser.parse()
-  if (parser.chunkList.length !== 1) {
+  if (chunkList.length !== 1) {
     throw new Error('TODO')
   }
 
-  return parser.getChunk(0)
+  return chunkList[0]
 }
 
 /**
