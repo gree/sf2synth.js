@@ -39,4 +39,26 @@ export default class Stream {
   readAt(offset) {
     return this.data[this.ip + offset]
   }
+
+  /* helper */
+
+  readUInt8() {
+    return this.readByte()
+  }
+  
+  readInt8() {
+    return (this.readByte() << 24) >> 24
+  }
+  
+  readUInt16() {
+    return this.readWORD()
+  }
+
+  readInt16() {
+    return this.readWORD() << 16 >> 16
+  }
+
+  readUInt32() {
+    return this.readDWORD()
+  }
 }

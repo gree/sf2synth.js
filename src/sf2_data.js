@@ -76,9 +76,7 @@ export class ModulatorList {
       // Amount
       t.value = {
         code: code,
-        amount: stream.readAt(0) | (stream.readAt(1) << 8),
-        lo: stream.readByte(),
-        hi: stream.readByte()
+        amount: stream.readInt16()
       }
     } else {
       // Amount
@@ -94,7 +92,7 @@ export class ModulatorList {
           break
         default:
           t.value = {
-            amount: stream.readWORD()
+            amount: stream.readInt16()
           }
           break
       }
@@ -123,9 +121,7 @@ export class GeneratorList {
     if (key === void 0) {
       t.value = {
         code,
-        amount: stream.readAt(0) | (stream.readAt(1) << 8),
-        lo: stream.readByte(),
-        hi: stream.readByte()
+        amount: stream.readInt16()
       }
     } else {
       switch (key) {
@@ -140,7 +136,7 @@ export class GeneratorList {
           break
         default:
           t.value = {
-            amount: stream.readWORD()
+            amount: stream.readInt16()
           }
           break
       }
@@ -210,7 +206,7 @@ export class Sample {
     s.endLoop = stream.readDWORD()
     s.sampleRate = stream.readDWORD()
     s.originalPitch = stream.readByte()
-    s.pitchCorrection = stream.readByte()
+    s.pitchCorrection = stream.readInt8()
     s.sampleLink = stream.readWORD()
     s.sampleType = stream.readWORD()
 
