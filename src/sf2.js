@@ -1,4 +1,7 @@
 import { Chunk, Parser } from "./riff"
+import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./sf2_data"
+import { readString } from "./helper"
+import { GeneratorEnumeratorTable } from "./constants"
 
 export default class {
   /**
@@ -48,17 +51,15 @@ export default class {
       throw new Error('chunk not found')
     }
 
-    this.parseRiffChunk(chunk)
+    this.parseRiffChunk(chunk, this.input)
     this.input = null
   }
 
   /**
    * @param {Chunk} chunk
+   * @param {ByteArray} data
    */
-  parseRiffChunk(chunk) {
-    /** @type {ByteArray} */
-    const data = this.input
-    /** @type {number} */
+  parseRiffChunk(chunk, data) {
     let ip = chunk.offset
 
     // check parse target
@@ -80,22 +81,20 @@ export default class {
     }
 
     // INFO-list
-    this.info = parseInfoList(parser.getChunk(0), this.input)
+    this.info = parseInfoList(parser.getChunk(0), data)
 
     // sdta-list
-    this.samplingData = parseSdtaList(parser.getChunk(1), this.input)
+    this.samplingData = parseSdtaList(parser.getChunk(1), data)
 
     // pdta-list
-    this.parsePdtaList(parser.getChunk(2))
+    this.parsePdtaList(parser.getChunk(2), data)
   }
 
   /**
    * @param {Chunk} chunk
+   * @param {ByteArray} data
    */
-  parsePdtaList(chunk) {
-    /** @type {ByteArray} */
-    const data = this.input
-    /** @type {number} */
+  parsePdtaList(chunk, data) {
     let ip = chunk.offset
 
     // check parse target
@@ -147,61 +146,24 @@ export default class {
     }
 
     while (ip < size) {
-      const sampleName = readString(data, ip, ip += 20)
-      const start = (
-        (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-      ) >>> 0
-      const end = (
-        (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-      ) >>> 0
-      let startLoop = (
-        (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-      ) >>> 0
-      let endLoop =  (
-        (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-      ) >>> 0
-      let sampleRate = (
-        (data[ip++] << 0) | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)
-      ) >>> 0
-      const originalPitch = data[ip++]
-      const pitchCorrection = (data[ip++] << 24) >> 24
-      const sampleLink = data[ip++] | (data[ip++] << 8)
-      const sampleType = data[ip++] | (data[ip++] << 8)
-
-      //*
+      let header = Sample.parse(data, ip)
+      ip += header.size
+  
       let sample = new Int16Array(new Uint8Array(data.subarray(
-        this.samplingData.offset + start * 2,
-        this.samplingData.offset + end   * 2
+        this.samplingData.offset + header.start * 2,
+        this.samplingData.offset + header.end   * 2
       )).buffer)
 
-      startLoop -= start
-      endLoop -= start
-
-      if (sampleRate > 0) {
-        const adjust = adjustSampleData(sample, sampleRate)
+      if (header.sampleRate > 0) {
+        const adjust = adjustSampleData(sample, header.sampleRate)
         sample = adjust.sample
-        sampleRate *= adjust.multiply
-        startLoop *= adjust.multiply
-        endLoop *= adjust.multiply
+        header.sampleRate *= adjust.multiply
+        header.startLoop *= adjust.multiply
+        header.endLoop *= adjust.multiply
       }
 
       samples.push(sample)
-      //*/
-
-      sampleHeader.push({
-        sampleName,
-        /*
-        start: start,
-        end: end,
-        */
-        startLoop,
-        endLoop,
-        sampleRate,
-        originalPitch,
-        pitchCorrection,
-        sampleLink,
-        sampleType
-      })
+      sampleHeader.push(header)
     }
   }
 
@@ -243,7 +205,7 @@ export default class {
 
   createPreset() {
     /** @type {Array.<Object>} */
-    const preset   = this.presetHeader
+    const preset = this.presetHeader
     /** @type {Array.<Object>} */
     const zone = this.presetZone
     /** @type {Array.<Object>} */
@@ -289,75 +251,6 @@ export default class {
   }
 }
 
-const GeneratorEnumeratorTable = [
-  'startAddrsOffset',
-  'endAddrsOffset',
-  'startloopAddrsOffset',
-  'endloopAddrsOffset',
-  'startAddrsCoarseOffset',
-  'modLfoToPitch',
-  'vibLfoToPitch',
-  'modEnvToPitch',
-  'initialFilterFc',
-  'initialFilterQ',
-  'modLfoToFilterFc',
-  'modEnvToFilterFc',
-  'endAddrsCoarseOffset',
-  'modLfoToVolume',
-  , // 14
-  'chorusEffectsSend',
-  'reverbEffectsSend',
-  'pan',
-  ,,, // 18,19,20
-  'delayModLFO',
-  'freqModLFO',
-  'delayVibLFO',
-  'freqVibLFO',
-  'delayModEnv',
-  'attackModEnv',
-  'holdModEnv',
-  'decayModEnv',
-  'sustainModEnv',
-  'releaseModEnv',
-  'keynumToModEnvHold',
-  'keynumToModEnvDecay',
-  'delayVolEnv',
-  'attackVolEnv',
-  'holdVolEnv',
-  'decayVolEnv',
-  'sustainVolEnv',
-  'releaseVolEnv',
-  'keynumToVolEnvHold',
-  'keynumToVolEnvDecay',
-  'instrument',
-  , // 42
-  'keyRange',
-  'velRange',
-  'startloopAddrsCoarseOffset',
-  'keynum',
-  'velocity',
-  'initialAttenuation',
-  , // 49
-  'endloopAddrsCoarseOffset',
-  'coarseTune',
-  'fineTune',
-  'sampleID',
-  'sampleModes',
-  , // 55
-  'scaleTuning',
-  'exclusiveClass',
-  'overridingRootKey'
-]
-
-function readString(data, start, end) {
-  const str = String.fromCharCode.apply(null, data.subarray(start, end))
-  const nullLocation = str.indexOf("\u0000")
-  if (nullLocation > 0) {
-    return str.substr(0, nullLocation)
-  }
-  return str
-}
-
 const InfoNameTable = {
   ICMT: "comment",
   ICOP: "copyright",
@@ -375,6 +268,7 @@ const InfoNameTable = {
 /**
  * @param {Chunk} chunk
  * @param {ByteArray} data
+ * @return {Object}
  */
 function parseInfoList(chunk, data) {
   /** @type {number} */
@@ -408,6 +302,7 @@ function parseInfoList(chunk, data) {
 /**
  * @param {Chunk} chunk
  * @param {ByteArray} data
+ * @return {Chunk}
  */
 function parseSdtaList(chunk, data) {
   /** @type {number} */
@@ -451,15 +346,9 @@ function parsePhdr(chunk, data) {
   }
 
   while (ip < size) {
-    presetHeader.push({
-      presetName: readString(data, ip, ip += 20),
-      preset: data[ip++] | (data[ip++] << 8),
-      bank: data[ip++] | (data[ip++] << 8),
-      presetBagIndex: data[ip++] | (data[ip++] << 8),
-      library: (data[ip++] | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)) >>> 0,
-      genre: (data[ip++] | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)) >>> 0,
-      morphology: (data[ip++] | (data[ip++] << 8) | (data[ip++] << 16) | (data[ip++] << 24)) >>> 0
-    })
+    const p = PresetHeader.parse(data, ip)
+    presetHeader.push(p)
+    ip += p.size
   }
 
   return presetHeader
@@ -483,10 +372,9 @@ function parsePbag(chunk, data) {
   }
 
   while (ip < size) {
-    presetZone.push({
-      presetGeneratorIndex: data[ip++] | (data[ip++] << 8),
-      presetModulatorIndex: data[ip++] | (data[ip++] << 8)
-    })
+    const p = PresetBag.parse(data, ip)
+    ip += p.size
+    presetZone.push(p)
   }
 
   return presetZone
@@ -531,57 +419,9 @@ function parseModulator(chunk, data) {
   const output = []
 
   while (ip < size) {
-    // Src  Oper
-    // TODO
-    ip += 2
-
-    // Dest Oper
-    const code = data[ip++] | (data[ip++] << 8)
-    const key = GeneratorEnumeratorTable[code]
-    if (key === void 0) {
-      // Amount
-      output.push({
-        type: key,
-        value: {
-          code: code,
-          amount: data[ip] | (data[ip+1] << 8) << 16 >> 16,
-          lo: data[ip++],
-          hi: data[ip++]
-        }
-      })
-    } else {
-      // Amount
-      switch (key) {
-        case 'keyRange': /* FALLTHROUGH */
-        case 'velRange': /* FALLTHROUGH */
-        case 'keynum': /* FALLTHROUGH */
-        case 'velocity':
-          output.push({
-            type: key,
-            value: {
-              lo: data[ip++],
-              hi: data[ip++]
-            }
-          })
-          break
-        default:
-          output.push({
-            type: key,
-            value: {
-              amount: data[ip++] | (data[ip++] << 8) << 16 >> 16
-            }
-          })
-          break
-      }
-    }
-
-    // AmtSrcOper
-    // TODO
-    ip += 2
-
-    // Trans Oper
-    // TODO
-    ip += 2
+    const mod = ModulatorList.parse(data, ip)
+    ip += mod.size
+    output.push(mod)
   }
 
   return output
@@ -605,10 +445,9 @@ function parseInst(chunk, data) {
   }
 
   while (ip < size) {
-    instrument.push({
-      instrumentName: readString(data, ip, ip += 20),
-      instrumentBagIndex: data[ip++] | (data[ip++] << 8)
-    })
+    const i = Instrument.parse(data, ip)
+    ip += i.size
+    instrument.push(i)
   }
 
   return instrument
@@ -633,10 +472,9 @@ function parseIbag(chunk, data) {
 
 
   while (ip < size) {
-    instrumentZone.push({
-      instrumentGeneratorIndex: data[ip++] | (data[ip++] << 8),
-      instrumentModulatorIndex: data[ip++] | (data[ip++] << 8)
-    })
+    const b = InstrumentBag.parse(data, ip)
+    ip += b.size
+    instrumentZone.push(b)
   }
 
   return instrumentZone
@@ -672,6 +510,7 @@ function parseIgen(chunk, data) {
 
 /**
  * @param {Chunk} chunk
+ * @param {ByteArray} data
  * @return {Array.<Object>}
  */
 function parseGenerator(chunk, data) {
@@ -682,43 +521,9 @@ function parseGenerator(chunk, data) {
   const size = chunk.offset + chunk.size
 
   while (ip < size) {
-    const code = data[ip++] | (data[ip++] << 8)
-    const key = GeneratorEnumeratorTable[code]
-    if (key === void 0) {
-      output.push({
-        type: key,
-        value: {
-          code,
-          amount: data[ip] | (data[ip+1] << 8) << 16 >> 16,
-          lo: data[ip++],
-          hi: data[ip++]
-        }
-      })
-      continue
-    }
-
-    switch (key) {
-      case 'keynum': /* FALLTHROUGH */
-      case 'keyRange': /* FALLTHROUGH */
-      case 'velRange': /* FALLTHROUGH */
-      case 'velocity':
-        output.push({
-          type: key,
-          value: {
-            lo: data[ip++],
-            hi: data[ip++]
-          }
-        })
-        break
-      default:
-        output.push({
-          type: key,
-          value: {
-            amount: data[ip++] | (data[ip++] << 8) << 16 >> 16
-          }
-        })
-        break
-    }
+    const gen = GeneratorList.parse(data, ip)
+    ip += gen.size
+    output.push(gen)
   }
 
   return output
