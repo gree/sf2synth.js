@@ -132,7 +132,7 @@ export default class Synthesizer {
     const bankNumber = channelNumber === 9 ? 128 : this.bank
     const channel = this.channels[channelNumber]
 
-    const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key)
+    const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity)
 
     if (!instrumentKey) {
       return

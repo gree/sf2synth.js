@@ -8,7 +8,7 @@ export default class SoundFont {
     this.bankSet = createAllInstruments(parser)
   }
 
-  getInstrumentKey(bankNumber, instrumentNumber, key) {
+  getInstrumentKey(bankNumber, instrumentNumber, key, velocity = 100) {
     const bank = this.bankSet[bankNumber]
     if (!bank) {
       console.warn(
@@ -30,7 +30,20 @@ export default class SoundFont {
       return null
     }
 
-    const instrumentKey = instrument[key]
+    const instrumentKey = instrument.notes.filter(i => {
+      let isInKeyRange = false
+      if (i.keyRange) {
+        isInKeyRange = key >= i.keyRange.lo && key <= i.keyRange.hi
+      }
+
+      let isInVelRange = true
+      if (i.velRange) {
+        isInVelRange = velocity >= i.velRange.lo && velocity <= i.velRange.hi
+      }
+
+      return isInKeyRange && isInVelRange
+    })[0]
+
     if (!instrumentKey) {
       // TODO
       console.warn(
@@ -59,7 +72,7 @@ function createInstrument({ instrument, instrumentZone, instrumentZoneGenerator,
     const zoneInfo = []
 
     // instrument bag
-    for (let j = bagIndex, jl = bagIndexEnd; j < jl; ++j) {
+    for (let j = bagIndex; j < bagIndexEnd; ++j) {
       const instrumentGenerator = createInstrumentGenerator(zone, j, instrumentZoneGenerator)
       const instrumentModulator = createInstrumentModulator(zone, j, instrumentZoneModulator)
 
@@ -81,50 +94,26 @@ function createInstrument({ instrument, instrumentZone, instrumentZoneGenerator,
 }
 
 function createPreset({ presetHeader, presetZone, presetZoneGenerator, presetZoneModulator }) {
-  /** @type {Array.<Object>} */
-  const preset = presetHeader
-  /** @type {Array.<Object>} */
-  const zone = presetZone
-  /** @type {Array.<Object>} */
-  const output = []
-  /** @type {number} */
-  let instrument
-
   // preset -> preset bag -> generator / modulator
-  for (let i = 0; i < preset.length; ++i) {
-    const bagIndex    = preset[i].presetBagIndex
-    const bagIndexEnd = preset[i+1] ? preset[i+1].presetBagIndex : zone.length
+  return presetHeader.map((preset, i) => {
+    const nextPreset = presetHeader[i + 1]
+    const bagIndex    = preset.presetBagIndex
+    const bagIndexEnd = nextPreset ? nextPreset.presetBagIndex : presetZone.length
     const zoneInfo = []
 
     // preset bag
     for (let j = bagIndex, jl = bagIndexEnd; j < jl; ++j) {
-      const presetGenerator = createPresetGenerator(zone, j, presetZoneGenerator)
-      const presetModulator = createPresetModulator(zone, j, presetZoneModulator)
-
       zoneInfo.push({
-        generator: presetGenerator.generator,
-        generatorSequence: presetGenerator.generatorInfo,
-        modulator: presetModulator.modulator,
-        modulatorSequence: presetModulator.modulatorInfo
+        presetGenerator: createPresetGenerator(presetZone, j, presetZoneGenerator),
+        presetModulator: createPresetModulator(presetZone, j, presetZoneModulator)
       })
-
-      instrument =
-        presetGenerator.generator.instrument !== undefined ?
-          presetGenerator.generator.instrument.amount :
-        presetModulator.modulator.instrument !== undefined ?
-          presetModulator.modulator.instrument.amount :
-        null
     }
-
-    output.push({
-      name: preset[i].presetName,
+    
+    return {
       info: zoneInfo,
-      header: preset[i],
-      instrument
-    })
-  }
-
-  return output
+      header: preset
+    }
+  })
 }
 
 function createAllInstruments(parser) {
@@ -135,20 +124,20 @@ function createAllInstruments(parser) {
   for (let preset of presets) {
     const bankNumber = preset.header.bank
     const presetNumber = preset.header.preset
-
-    if (typeof preset.instrument !== 'number') {
-      continue
-    }
-
-    /** @type {Object} */
-    const instrument = instruments[preset.instrument]
-    if (instrument.name.replace(/\0*$/, '') === 'EOI') {
-      continue
-    }
-
-    const notes = instrument.info
-      .map(info => createNoteInfo(parser, info))
-      .reduce((a, b) => Object.assign({}, a, b)) // merge objects
+    
+    const notes = preset.info
+      .map(info => info.presetGenerator.generator)
+      .map(generator => {
+        if (generator.instrument === undefined) {
+          return null
+        }
+        const instrumentNumber = generator.instrument.amount
+        return instruments[instrumentNumber].info
+          .map(info => createNoteInfo(parser, info.generator))
+          .filter(x => x) // remove null
+      })
+      .filter(x => x) // remove null
+      .reduce((a, b) => a.concat(b), []) // flatten
 
     // select bank
     if (banks[bankNumber] === undefined) {
@@ -157,7 +146,7 @@ function createAllInstruments(parser) {
 
     const bank = banks[bankNumber]
     bank[presetNumber] = {
-      ...notes,
+      notes,
       name: preset.name
     }
   }
@@ -165,11 +154,10 @@ function createAllInstruments(parser) {
   return banks
 }
 
-function createNoteInfo(parser, info) {
-  const { generator } = info
-
-  if (generator['keyRange'] === undefined || generator['sampleID'] === undefined) {
-    return
+function createNoteInfo(parser, generator) {
+  const { keyRange, sampleID, velRange } = generator
+  if (keyRange === undefined || sampleID === undefined) {
+    return null
   }
 
   const volAttack  = getModGenAmount(generator, 'attackVolEnv',  -12000)
@@ -191,7 +179,7 @@ function createNoteInfo(parser, info) {
   const sampleHeader = parser.sampleHeader[sampleId]
   const basePitch = tune + (sampleHeader.pitchCorrection / 100) - getModGenAmount(generator, 'overridingRootKey', sampleHeader.originalPitch)
 
-  const baseObj = {
+  return {
     sample: parser.sample[sampleId],
     sampleRate: sampleHeader.sampleRate,
     sampleName: sampleHeader.sampleName,
@@ -226,19 +214,11 @@ function createNoteInfo(parser, info) {
     initialFilterFc: getModGenAmount(generator, 'initialFilterFc', 13500),
     modEnvToFilterFc: getModGenAmount(generator, 'modEnvToFilterFc'),
     initialFilterQ: getModGenAmount(generator, 'initialFilterQ'),
-    freqVibLFO: freqVibLFO ? Math.pow(2, freqVibLFO / 1200) * 8.176 : undefined
+    freqVibLFO: freqVibLFO ? Math.pow(2, freqVibLFO / 1200) * 8.176 : undefined,
+    playbackRate: (key) => Math.pow(Math.pow(2, 1/12), (key + basePitch) * scale),
+    keyRange,
+    velRange
   }
-
-  const preset = {}
-
-  for (let i = generator['keyRange'].lo; i <= generator['keyRange'].hi; ++i)  {
-    preset[i] = {
-      ...baseObj,
-      basePlaybackRate: Math.pow(Math.pow(2, 1/12), (i + basePitch) * scale)
-    }
-  }
-
-  return preset
 }
 
 /**

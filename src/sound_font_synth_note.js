@@ -6,7 +6,7 @@ export default class SynthesizerNote {
   *   channel: number,
   *   key: number,
   *   sample: Uint8Array,
-  *   basePlaybackRate: number,
+  *   playbackRate: function,
   *   loopStart: number,
   *   loopEnd: number,
   *   volume: number,
@@ -23,7 +23,7 @@ export default class SynthesizerNote {
      *   channel: number,
      *   key: number,
      *   sample: Uint8Array,
-     *   basePlaybackRate: number,
+     *   playbackRate: function,
      *   loopStart: number,
      *   loopEnd: number,
      *   volume: number,
@@ -40,7 +40,7 @@ export default class SynthesizerNote {
     /** @type {Int16Array} */
     this.buffer = instrument.sample
     /** @type {number} */
-    this.playbackRate = instrument.basePlaybackRate
+    this.playbackRate = instrument.playbackRate(instrument.key)
     /** @type {number} */
     this.sampleRate = instrument.sampleRate
     /** @type {number} */
