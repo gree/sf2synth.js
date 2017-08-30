@@ -4,7 +4,7 @@
  */ 
 export default class SoundFont {
   constructor(parser) {
-    /** @type {Array.<Array.<Object>>} */
+    /** @type {Array.<Object>} */
     this.bankSet = createAllInstruments(parser)
   }
 
@@ -97,7 +97,7 @@ function createPreset({ presetHeader, presetZone, presetZoneGenerator, presetZon
   // preset -> preset bag -> generator / modulator
   return presetHeader.map((preset, i) => {
     const nextPreset = presetHeader[i + 1]
-    const bagIndex    = preset.presetBagIndex
+    const bagIndex = preset.presetBagIndex
     const bagIndexEnd = nextPreset ? nextPreset.presetBagIndex : presetZone.length
     const zoneInfo = []
 
@@ -147,7 +147,7 @@ function createAllInstruments(parser) {
     const bank = banks[bankNumber]
     bank[presetNumber] = {
       notes,
-      name: preset.name
+      name: preset.header.presetName
     }
   }
 
