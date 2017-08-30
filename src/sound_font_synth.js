@@ -2,6 +2,8 @@ import SynthesizerNote from "./sound_font_synth_note"
 import Parser from "./sf2"
 import SoundFont from "./sound_font"
 
+const BASE_VOLUME = 0.4
+
 class Channel {
   instrument = 0
   volume = 0
@@ -32,8 +34,6 @@ export default class Synthesizer {
   constructor(input) {
     /** @type {Uint8Array} */
     this.input = input
-    /** @type {Parser} */
-    this.parser
     /** @type {number} */
     this.bank = 0
     /** @type {number} */
@@ -49,9 +49,7 @@ export default class Synthesizer {
     /** @type {Array.<Channel>} */
     this.channels = []
     /** @type {number} */
-    this.baseVolume = 1 / 0x8000
-    /** @type {number} */
-    this.masterVolume = 16384
+    this.masterVolume = 1.0
     /** @type {View} */
     this.view = new DummyView()
   }
@@ -109,12 +107,12 @@ export default class Synthesizer {
     this.gainMaster.connect(this.ctx.destination)
     this.bufSrc.start(0)
 
-    this.setMasterVolume(16383)
+    this.setMasterVolume(this.masterVolume)
   }
 
   setMasterVolume(volume) {
     this.masterVolume = volume
-    this.gainMaster.gain.value = this.baseVolume * (volume / 16384)
+    this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
   }
 
   stop() {
@@ -147,7 +145,7 @@ export default class Synthesizer {
     instrumentKey['velocity'] = velocity
     instrumentKey['panpot'] = panpot
     instrumentKey['volume'] = channel.volume / 127
-    instrumentKey['pitchBend'] = channel.pitchBend - 8192
+    instrumentKey['pitchBend'] = channel.pitchBend - 0x2000
     instrumentKey['pitchBendSensitivity'] = channel.pitchBendSensitivity
 
     // note on
@@ -224,7 +222,7 @@ export default class Synthesizer {
     const bend = (lowerByte & 0x7f) | ((higherByte & 0x7f) << 7)
     const channel = this.channels[channelNumber]
     const currentNoteOn = channel.currentNoteOn
-    const calculated = bend - 8192
+    const calculated = bend - 0x2000
 
     this.view.pitchBend(channelNumber, calculated)
 

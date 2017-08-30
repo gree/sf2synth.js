@@ -87,7 +87,9 @@ export default class MidiMessageHandler {
                 // sub ID 2
                 switch (message[4]) {
                   case 0x01: // master volume
-                    synth.setMasterVolume(message[5] + (message[6] << 7))
+                    const volume = message[5] + (message[6] << 7)
+                    const MAX_VOLUME = 0x4000 - 1
+                    synth.setMasterVolume(volume / MAX_VOLUME)
                     break
                 }
                 break
