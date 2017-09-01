@@ -132,8 +132,18 @@ function createAllInstruments(parser) {
           return null
         }
         const instrumentNumber = generator.instrument.amount
-        return instruments[instrumentNumber].info
-          .map(info => createNoteInfo(parser, info.generator))
+        const instrument = instruments[instrumentNumber]
+
+        // use the first generator in the zone as the default value
+        let baseGenerator
+        if (instrument.info[0].generator) {
+          const generator = instrument.info[0].generator
+          if (generator.sampleID === undefined && generator.keyRange.lo === 0 && generator.keyRange.hi === 127) {
+            baseGenerator = generator
+          }
+        }
+        return instrument.info
+          .map(info => createNoteInfo(parser, info.generator, baseGenerator))
           .filter(x => x) // remove null
       })
       .filter(x => x) // remove null
@@ -154,7 +164,9 @@ function createAllInstruments(parser) {
   return banks
 }
 
-function createNoteInfo(parser, generator) {
+function createNoteInfo(parser, targetGenerator, baseGenerator) {
+  const generator = { ...baseGenerator, ...targetGenerator }
+
   const { keyRange, sampleID, velRange } = generator
   if (keyRange === undefined || sampleID === undefined) {
     return null
