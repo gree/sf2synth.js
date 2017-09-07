@@ -210,7 +210,7 @@ export default class View {
       const select = item.querySelector('select');
       if (select) {
         select.addEventListener('change', event => {
-          synth.programChange(channel, parseInt(event.target.value));
+          synth.programChange(channel, parseInt(event.target.value, 10));
         }, false);
         select.selectedIndex = synth.channels[i].instrument;
       }

@@ -38,7 +38,11 @@ export default class MidiMessageHandler {
                   case 0: // Pitch Bend Sensitivity
                     synth.pitchBendSensitivity(channel, message[2])
                     break
+                  default: 
+                    break
                 }
+                break
+              default: 
                 break
             }
             break
@@ -80,7 +84,7 @@ export default class MidiMessageHandler {
             // TODO
             break
           case 0x7f: // realtime
-            const device = message[2]
+            // const device = message[2]
             // sub ID 1
             switch (message[3]) {
               case 0x04: // device control
@@ -91,9 +95,15 @@ export default class MidiMessageHandler {
                     const MAX_VOLUME = 0x4000 - 1
                     synth.setMasterVolume(volume / MAX_VOLUME)
                     break
+                  default: 
+                    break
                 }
                 break
+              default: 
+                break
             }
+            break
+          default: 
             break
         }
         break

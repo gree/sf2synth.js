@@ -12,7 +12,7 @@ export class Parser {
     /** @type {number} */
     this.length = opt_params['length'] || input.length - this.ip
     /** @type {Array.<Chunk>} */
-    this.chunkList
+    this.chunkList = []
     /** @type {number} */
     this.offset = this.ip
     /** @type {boolean} */

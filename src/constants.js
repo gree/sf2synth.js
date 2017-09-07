@@ -13,11 +13,11 @@ export const GeneratorEnumeratorTable = [
   'modEnvToFilterFc',
   'endAddrsCoarseOffset',
   'modLfoToVolume',
-  , // 14
+  undefined, // 14
   'chorusEffectsSend',
   'reverbEffectsSend',
   'pan',
-  ,,, // 18,19,20
+  undefined,undefined,undefined, // 18,19,20
   'delayModLFO',
   'freqModLFO',
   'delayVibLFO',
@@ -39,20 +39,20 @@ export const GeneratorEnumeratorTable = [
   'keynumToVolEnvHold',
   'keynumToVolEnvDecay',
   'instrument',
-  , // 42
+  undefined, // 42
   'keyRange',
   'velRange',
   'startloopAddrsCoarseOffset',
   'keynum',
   'velocity',
   'initialAttenuation',
-  , // 49
+  undefined, // 49
   'endloopAddrsCoarseOffset',
   'coarseTune',
   'fineTune',
   'sampleID',
   'sampleModes',
-  , // 55
+  undefined, // 55
   'scaleTuning',
   'exclusiveClass',
   'overridingRootKey'

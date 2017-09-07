@@ -1,4 +1,4 @@
-import { Chunk, Parser } from "./riff"
+import { Parser } from "./riff"
 import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./sf2_data"
 import { readString } from "./helper"
 import Stream from "./stream"

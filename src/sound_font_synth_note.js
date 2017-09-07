@@ -1,4 +1,18 @@
 export default class SynthesizerNote {
+  
+  //---------------------------------------------------------------------------
+  // audio node
+  //---------------------------------------------------------------------------
+
+  /** @type {AudioBuffer} */
+  audioBuffer
+  /** @type {AudioBufferSourceNode} */
+  bufferSource
+  /** @type {AudioPannerNode} */
+  panner
+  /** @type {AudioGainNode} */
+  gainOutput
+  
   /**
   * @param {AudioContext} ctx
   * @param {AudioNode} destination
@@ -59,19 +73,6 @@ export default class SynthesizerNote {
     this.startTime = ctx.currentTime
     /** @type {number} */
     this.computedPlaybackRate = this.playbackRate
-
-    //---------------------------------------------------------------------------
-    // audio node
-    //---------------------------------------------------------------------------
-
-    /** @type {AudioBuffer} */
-    this.audioBuffer
-    /** @type {AudioBufferSourceNode} */
-    this.bufferSource
-    /** @type {AudioPannerNode} */
-    this.panner
-    /** @type {AudioGainNode} */
-    this.gainOutput
   }
 
   noteOn() {

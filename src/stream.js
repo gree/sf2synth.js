@@ -55,7 +55,7 @@ export default class Stream {
   }
 
   readInt16() {
-    return this.readWORD() << 16 >> 16
+    return (this.readWORD() << 16) >> 16
   }
 
   readUInt32() {
