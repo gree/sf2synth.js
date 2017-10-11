@@ -118,26 +118,27 @@ export default class SynthesizerNote {
     //---------------------------------------------------------------------------
     const now = this.ctx.currentTime
     /** @type {number} */
-    const volAttack = now + instrument.volAttack
+    const volAttackTime = now + instrument.volAttack
     /** @type {number} */
-    const modAttack = now + instrument.modAttack
+    const modAttackTime = now + instrument.modAttack
     /** @type {number} */
-    const volDecay = volAttack + instrument.volDecay
+    const volDecay = volAttackTime + instrument.volDecay
     /** @type {number} */
-    const modDecay = modAttack + instrument.modDecay
+    const modDecay = modAttackTime + instrument.modDecay
     /** @type {number} */
     const startTime = instrument.start / this.sampleRate
 
+    const attackVolume = this.volume * (this.velocity / 127)
     outputGain.setValueAtTime(0, now)
-    outputGain.linearRampToValueAtTime(this.volume * (this.velocity / 127), volAttack)
-    outputGain.linearRampToValueAtTime(this.volume * (1 - instrument.volSustain), volDecay)
+    outputGain.linearRampToValueAtTime(attackVolume, volAttackTime)
+    outputGain.linearRampToValueAtTime(attackVolume * (1 - instrument.volSustain), volDecay)
 
     filter.Q.setValueAtTime(instrument.initialFilterQ * Math.pow(10, 200), now)
     const baseFreq = amountToFreq(instrument.initialFilterFc)
     const peekFreq = amountToFreq(instrument.initialFilterFc + instrument.modEnvToFilterFc)
     const sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - instrument.modSustain)
     filter.frequency.setValueAtTime(baseFreq, now)
-    filter.frequency.linearRampToValueAtTime(peekFreq, modAttack)
+    filter.frequency.linearRampToValueAtTime(peekFreq, modAttackTime)
     filter.frequency.linearRampToValueAtTime(sustainFreq, modDecay)
 
     /**
