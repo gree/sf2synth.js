@@ -1,5 +1,5 @@
 export default class SynthesizerNote {
-  
+
   //---------------------------------------------------------------------------
   // audio node
   //---------------------------------------------------------------------------
@@ -12,7 +12,7 @@ export default class SynthesizerNote {
   panner
   /** @type {AudioGainNode} */
   gainOutput
-  
+
   /**
   * @param {AudioContext} ctx
   * @param {AudioNode} destination
@@ -90,14 +90,14 @@ export default class SynthesizerNote {
     bufferSource.buffer = this.audioBuffer
     bufferSource.loop = (this.channel !== 9)
     bufferSource.loopStart = instrument.loopStart / this.sampleRate
-    bufferSource.loopEnd   = instrument.loopEnd / this.sampleRate
+    bufferSource.loopEnd = instrument.loopEnd / this.sampleRate
     bufferSource.onended = () => this.disconnect()
     this.bufferSource = bufferSource
     this.updatePitchBend(this.pitchBend)
 
     // audio node
     const panner = this.panner = ctx.createPanner()
-    const output = this.gainOutput = ctx.createGainNode()
+    const output = this.gainOutput = ctx.createGain()
     const outputGain = output.gain
 
     // filter
@@ -211,7 +211,7 @@ export default class SynthesizerNote {
     const modDecay = modAttack + instrument.modDecay
     /** @type {number} */
     const peekPitch = computed * Math.pow(
-      Math.pow(2, 1/12),
+      Math.pow(2, 1 / 12),
       this.modEnvToPitch * this.instrument.scaleTuning
     )
 
@@ -226,7 +226,7 @@ export default class SynthesizerNote {
    */
   updatePitchBend(pitchBend) {
     this.computedPlaybackRate = this.playbackRate * Math.pow(
-      Math.pow(2, 1/12),
+      Math.pow(2, 1 / 12),
       (
         this.pitchBendSensitivity * (
           pitchBend / (pitchBend < 0 ? 8192 : 8191)

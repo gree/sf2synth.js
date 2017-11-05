@@ -14,24 +14,24 @@ class Channel {
 }
 
 class DummyView {
-  draw() {}
-  remove() {}
-  getInstrumentElement() {}
-  getKeyElement() {}
-  noteOn() {}
-  noteOff() {}
-  programChange() {}
-  volumeChange() {}
-  panpotChange() {}
-  pitchBend() {}
-  pitchBendSensitivity() {}
+  draw() { }
+  remove() { }
+  getInstrumentElement() { }
+  getKeyElement() { }
+  noteOn() { }
+  noteOff() { }
+  programChange() { }
+  volumeChange() { }
+  panpotChange() { }
+  pitchBend() { }
+  pitchBendSensitivity() { }
 }
 
 /**
  * @constructor
  */
 export default class Synthesizer {
-  constructor(input) {
+  constructor(input, ctx) {
     /** @type {Uint8Array} */
     this.input = input
     /** @type {number} */
@@ -39,43 +39,17 @@ export default class Synthesizer {
     /** @type {number} */
     this.bufferSize = 1024
     /** @type {AudioContext} */
-    this.ctx = this.getAudioContext()
+    this.ctx = ctx
     /** @type {AudioGainNode} */
-    this.gainMaster = this.ctx.createGainNode()
-    /** @type {DynamicsCompressorNode} */
-    this.compressor = this.ctx.createDynamicsCompressor()
-    /** @type {AudioBufferSourceNode} */
-    this.bufSrc = this.ctx.createBufferSource()
+    this.gainMaster = this.ctx.createGain()
     /** @type {Array.<Channel>} */
     this.channels = []
     /** @type {number} */
     this.masterVolume = 1.0
     /** @type {View} */
     this.view = new DummyView()
-  }
 
-    /**
-   * @returns {AudioContext}
-   */
-  getAudioContext() {
-    /** @type {AudioContext} */
-    let ctx
-
-    if (window.AudioContext !== void 0) {
-      ctx = new window.AudioContext()
-    } else if (window.webkitAudioContext !== void 0) {
-      ctx = new window.webkitAudioContext()
-    } else if (window.mozAudioContext !== void 0) {
-      ctx = new window.mozAudioContext()
-    } else {
-      throw new Error('Web Audio not supported')
-    }
-
-    if (ctx.createGainNode === void 0) {
-      ctx.createGainNode = ctx.createGain
-    }
-
-    return ctx
+    this.setMasterVolume(this.masterVolume)
   }
 
   init() {
@@ -102,23 +76,13 @@ export default class Synthesizer {
     this.soundFont = new SoundFont(parser)
   }
 
-  start() {
-    this.bufSrc.connect(this.gainMaster)
-    this.gainMaster.connect(this.ctx.destination)
-    this.bufSrc.start(0)
-
-    this.setMasterVolume(this.masterVolume)
+  connect(destination) {
+    this.gainMaster.connect(destination)
   }
 
   setMasterVolume(volume) {
     this.masterVolume = volume
     this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
-  }
-
-  stop() {
-    this.bufSrc.disconnect(0)
-    this.gainMaster.disconnect(0)
-    this.compressor.disconnect(0)
   }
 
   /**
@@ -170,7 +134,7 @@ export default class Synthesizer {
     if (!instrumentKey) {
       return
     }
-    
+
     const currentNoteOn = channel.currentNoteOn
 
     for (let i = 0, il = currentNoteOn.length; i < il; ++i) {
@@ -182,7 +146,7 @@ export default class Synthesizer {
         --il
       }
     }
-    
+
     this.view.noteOff(channelNumber, key)
   }
 
