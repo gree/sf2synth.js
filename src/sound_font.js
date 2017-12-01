@@ -1,7 +1,7 @@
 /**
  * Parser で読み込んだサウンドフォントのデータを
  * Synthesizer から利用しやすい形にするクラス
- */ 
+ */
 export default class SoundFont {
   constructor(parser) {
     /** @type {Array.<Object>} */
@@ -67,8 +67,8 @@ function createInstrument({ instrument, instrumentZone, instrumentZoneGenerator,
 
   // instrument -> instrument bag -> generator / modulator
   for (let i = 0; i < instrument.length; ++i) {
-    const bagIndex    = instrument[i].instrumentBagIndex
-    const bagIndexEnd = instrument[i+1] ? instrument[i+1].instrumentBagIndex : zone.length
+    const bagIndex = instrument[i].instrumentBagIndex
+    const bagIndexEnd = instrument[i + 1] ? instrument[i + 1].instrumentBagIndex : zone.length
     const zoneInfo = []
 
     // instrument bag
@@ -108,7 +108,7 @@ function createPreset({ presetHeader, presetZone, presetZoneGenerator, presetZon
         presetModulator: createPresetModulator(presetZone, j, presetZoneModulator)
       })
     }
-    
+
     return {
       info: zoneInfo,
       header: preset
@@ -124,7 +124,7 @@ function createAllInstruments(parser) {
   for (let preset of presets) {
     const bankNumber = preset.header.bank
     const presetNumber = preset.header.preset
-    
+
     const notes = preset.info
       .map(info => info.presetGenerator.generator)
       .map(generator => {
@@ -172,12 +172,12 @@ function createNoteInfo(parser, targetGenerator, baseGenerator) {
     return null
   }
 
-  const volAttack  = getModGenAmount(generator, 'attackVolEnv',  -12000)
-  const volDecay   = getModGenAmount(generator, 'decayVolEnv',   -12000)
+  const volAttack = getModGenAmount(generator, 'attackVolEnv', -12000)
+  const volDecay = getModGenAmount(generator, 'decayVolEnv', -12000)
   const volSustain = getModGenAmount(generator, 'sustainVolEnv')
   const volRelease = getModGenAmount(generator, 'releaseVolEnv', -12000)
-  const modAttack  = getModGenAmount(generator, 'attackModEnv',  -12000)
-  const modDecay   = getModGenAmount(generator, 'decayModEnv',   -12000)
+  const modAttack = getModGenAmount(generator, 'attackModEnv', -12000)
+  const modDecay = getModGenAmount(generator, 'decayModEnv', -12000)
   const modSustain = getModGenAmount(generator, 'sustainModEnv')
   const modRelease = getModGenAmount(generator, 'releaseModEnv', -12000)
 
@@ -199,35 +199,35 @@ function createNoteInfo(parser, targetGenerator, baseGenerator) {
     scaleTuning: scale,
     start:
       getModGenAmount(generator, 'startAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'startAddrsOffset'),
+      getModGenAmount(generator, 'startAddrsOffset'),
     end:
       getModGenAmount(generator, 'endAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'endAddrsOffset'),
+      getModGenAmount(generator, 'endAddrsOffset'),
     loopStart: (
       //(sampleHeader.startLoop - sampleHeader.start) +
       (sampleHeader.startLoop) +
-        getModGenAmount(generator, 'startloopAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'startloopAddrsOffset')
-      ),
+      getModGenAmount(generator, 'startloopAddrsCoarseOffset') * 32768 +
+      getModGenAmount(generator, 'startloopAddrsOffset')
+    ),
     loopEnd: (
       //(sampleHeader.endLoop - sampleHeader.start) +
       (sampleHeader.endLoop) +
-        getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
-        getModGenAmount(generator, 'endloopAddrsOffset')
-      ),
-    volAttack:  Math.pow(2, volAttack / 1200),
-    volDecay:   Math.pow(2, volDecay / 1200),
+      getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
+      getModGenAmount(generator, 'endloopAddrsOffset')
+    ),
+    volAttack: Math.pow(2, volAttack / 1200),
+    volDecay: Math.pow(2, volDecay / 1200),
     volSustain: volSustain / 1000,
     volRelease: Math.pow(2, volRelease / 1200),
-    modAttack:  Math.pow(2, modAttack / 1200),
-    modDecay:   Math.pow(2, modDecay / 1200),
+    modAttack: Math.pow(2, modAttack / 1200),
+    modDecay: Math.pow(2, modDecay / 1200),
     modSustain: modSustain / 1000,
     modRelease: Math.pow(2, modRelease / 1200),
     initialFilterFc: getModGenAmount(generator, 'initialFilterFc', 13500),
     modEnvToFilterFc: getModGenAmount(generator, 'modEnvToFilterFc'),
-    initialFilterQ: getModGenAmount(generator, 'initialFilterQ'),
+    initialFilterQ: getModGenAmount(generator, 'initialFilterQ', 1),
     freqVibLFO: freqVibLFO ? Math.pow(2, freqVibLFO / 1200) * 8.176 : undefined,
-    playbackRate: (key) => Math.pow(Math.pow(2, 1/12), (key + basePitch) * scale),
+    playbackRate: (key) => Math.pow(Math.pow(2, 1 / 12), (key + basePitch) * scale),
     keyRange,
     velRange
   }
@@ -286,7 +286,7 @@ function createInstrumentGenerator(zone, index, instrumentZoneGenerator) {
   const modgen = createBagModGen(
     zone,
     zone[index].instrumentGeneratorIndex,
-    zone[index+1] ? zone[index+1].instrumentGeneratorIndex: instrumentZoneGenerator.length,
+    zone[index + 1] ? zone[index + 1].instrumentGeneratorIndex : instrumentZoneGenerator.length,
     instrumentZoneGenerator
   )
 
@@ -305,7 +305,7 @@ function createInstrumentModulator(zone, index, instrumentZoneModulator) {
   const modgen = createBagModGen(
     zone,
     zone[index].presetModulatorIndex,
-    zone[index+1] ? zone[index+1].instrumentModulatorIndex: instrumentZoneModulator.length,
+    zone[index + 1] ? zone[index + 1].instrumentModulatorIndex : instrumentZoneModulator.length,
     instrumentZoneModulator
   )
 
@@ -324,7 +324,7 @@ function createPresetGenerator(zone, index, presetZoneGenerator) {
   const modgen = createBagModGen(
     zone,
     zone[index].presetGeneratorIndex,
-    zone[index+1] ? zone[index+1].presetGeneratorIndex : presetZoneGenerator.length,
+    zone[index + 1] ? zone[index + 1].presetGeneratorIndex : presetZoneGenerator.length,
     presetZoneGenerator
   )
 
@@ -344,7 +344,7 @@ function createPresetModulator(zone, index, presetZoneModulator) {
   const modgen = createBagModGen(
     zone,
     zone[index].presetModulatorIndex,
-    zone[index+1] ? zone[index+1].presetModulatorIndex : presetZoneModulator.length,
+    zone[index + 1] ? zone[index + 1].presetModulatorIndex : presetZoneModulator.length,
     presetZoneModulator
   )
 

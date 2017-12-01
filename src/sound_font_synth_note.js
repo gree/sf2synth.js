@@ -133,7 +133,7 @@ export default class SynthesizerNote {
     outputGain.linearRampToValueAtTime(attackVolume, volAttackTime)
     outputGain.linearRampToValueAtTime(attackVolume * (1 - instrument.volSustain), volDecay)
 
-    filter.Q.setValueAtTime(instrument.initialFilterQ * Math.pow(10, 200), now)
+    filter.Q.setValueAtTime(instrument.initialFilterQ / 10, now)
     const baseFreq = amountToFreq(instrument.initialFilterFc)
     const peekFreq = amountToFreq(instrument.initialFilterFc + instrument.modEnvToFilterFc)
     const sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - instrument.modSustain)
