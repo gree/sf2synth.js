@@ -31,9 +31,9 @@ class DummyView {
  * @constructor
  */
 export default class Synthesizer {
-  constructor(input, ctx) {
+  constructor(ctx) {
     /** @type {Uint8Array} */
-    this.input = input
+    this.input = null
     /** @type {number} */
     this.bank = 0
     /** @type {number} */
@@ -50,11 +50,11 @@ export default class Synthesizer {
     this.view = new DummyView()
 
     this.setMasterVolume(this.masterVolume)
+
+    this.init()
   }
 
   init() {
-    this.refreshInstruments(this.input)
-
     for (let i = 0; i < 16; ++i) {
       this.channels.push(new Channel())
       this.programChange(i, i !== 9 ? i : 0)
@@ -91,6 +91,9 @@ export default class Synthesizer {
    * @param {number} velocity 強さ.
    */
   noteOn(channelNumber, key, velocity) {
+    if (!this.soundFont) {
+      return
+    }
     const bankNumber = channelNumber === 9 ? 128 : this.bank
     const channel = this.channels[channelNumber]
 
@@ -126,6 +129,9 @@ export default class Synthesizer {
    * @param {number} velocity 強さ.
    */
   noteOff(channelNumber, key, velocity) {
+    if (!this.soundFont) {
+      return
+    }
     const bankNumber = channelNumber === 9 ? 128 : this.bank
     const channel = this.channels[channelNumber]
 
