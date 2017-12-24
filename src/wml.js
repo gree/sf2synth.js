@@ -1,6 +1,6 @@
 import Synthesizer from "./sound_font_synth"
 import View from "./synth_view"
-import MessageHandler from "./message_handler"
+import MidiMessageHandler from "./midi_message_handler";
 
 /**
  * @constructor
