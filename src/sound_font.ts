@@ -1,10 +1,13 @@
+import Parser, { InstrumentZone } from "./sf2"
+
 /**
  * Parser で読み込んだサウンドフォントのデータを
  * Synthesizer から利用しやすい形にするクラス
  */
 export default class SoundFont {
+  bankSet: Object[]
+
   constructor(parser) {
-    /** @type {Array.<Object>} */
     this.bankSet = createAllInstruments(parser)
   }
 
@@ -59,10 +62,14 @@ export default class SoundFont {
   }
 }
 
-function createInstrument({ instrument, instrumentZone, instrumentZoneGenerator, instrumentZoneModulator }) {
-  /** @type {Array.<Object>} */
+function createInstrument({ instrument, instrumentZone, instrumentZoneGenerator, instrumentZoneModulator }: 
+  { instrument: { instrumentName: string, instrumentBagIndex: number }[], 
+    instrumentZone: InstrumentZone[], 
+    instrumentZoneGenerator: {}[], 
+    instrumentZoneModulator: {}[] 
+  }): 
+  { name: string, info: { generator: { sampleID: number, keyRange: { hi: number, lo: number } } }[] }[] {
   const zone = instrumentZone
-  /** @type {Array.<Object>} */
   const output = []
 
   // instrument -> instrument bag -> generator / modulator
@@ -93,7 +100,10 @@ function createInstrument({ instrument, instrumentZone, instrumentZoneGenerator,
   return output
 }
 
-function createPreset({ presetHeader, presetZone, presetZoneGenerator, presetZoneModulator }) {
+function createPreset({ presetHeader, presetZone, presetZoneGenerator, presetZoneModulator }): {
+  info: { presetGenerator: { generator: { instrument: { amount: number } } } }[], 
+  header: { bank: number, preset: number, presetName: string } 
+}[] {
   // preset -> preset bag -> generator / modulator
   return presetHeader.map((preset, i) => {
     const nextPreset = presetHeader[i + 1]
@@ -116,10 +126,10 @@ function createPreset({ presetHeader, presetZone, presetZoneGenerator, presetZon
   })
 }
 
-function createAllInstruments(parser) {
+function createAllInstruments(parser: Parser): {}[] {
   const presets = createPreset(parser)
   const instruments = createInstrument(parser)
-  const banks = []
+  const banks: {}[] = []
 
   for (let preset of presets) {
     const bankNumber = preset.header.bank
@@ -164,10 +174,10 @@ function createAllInstruments(parser) {
   return banks
 }
 
-function createNoteInfo(parser, targetGenerator, baseGenerator) {
+function createNoteInfo(parser: Parser, targetGenerator: {}, baseGenerator: {}) {
   const generator = { ...baseGenerator, ...targetGenerator }
 
-  const { keyRange, sampleID, velRange } = generator
+  const { keyRange, sampleID, velRange } = generator as any
   if (keyRange === undefined || sampleID === undefined) {
     return null
   }
@@ -233,28 +243,12 @@ function createNoteInfo(parser, targetGenerator, baseGenerator) {
   }
 }
 
-/**
- * @param {Object} generator
- * @param {string} enumeratorType
- * @param {number=} opt_default
- * @returns {number}
- */
-function getModGenAmount(generator, enumeratorType, opt_default = 0) {
+function getModGenAmount(generator: {}, enumeratorType: string, opt_default: number = 0): number {
   return generator[enumeratorType] ? generator[enumeratorType].amount : opt_default
 }
 
-
-/**
- * @param {Array.<Object>} zone
- * @param {number} indexStart
- * @param {number} indexEnd
- * @param zoneModGen
- * @returns {{modgen: Object, modgenInfo: Array.<Object>}}
- */
-function createBagModGen(zone, indexStart, indexEnd, zoneModGen) {
-  /** @type {Array.<Object>} */
+function createBagModGen(zone: {}[], indexStart: number, indexEnd: number, zoneModGen: {}): {modgen: {}, modgenInfo: {}[]}  {
   const modgenInfo = []
-  /** @type {Object} */
   const modgen = {
     unknown: [],
     'keyRange': {
@@ -277,12 +271,7 @@ function createBagModGen(zone, indexStart, indexEnd, zoneModGen) {
   return { modgen, modgenInfo }
 }
 
-/**
- * @param {Array.<Object>} zone
- * @param {number} index
- * @returns {{generator: Object, generatorInfo: Array.<Object>}}
- */
-function createInstrumentGenerator(zone, index, instrumentZoneGenerator) {
+function createInstrumentGenerator(zone: {instrumentGeneratorIndex: number}[], index: number, instrumentZoneGenerator: {}[]) {
   const modgen = createBagModGen(
     zone,
     zone[index].instrumentGeneratorIndex,
@@ -296,12 +285,7 @@ function createInstrumentGenerator(zone, index, instrumentZoneGenerator) {
   }
 }
 
-/**
- * @param {Array.<Object>} zone
- * @param {number} index
- * @returns {{modulator: Object, modulatorInfo: Array.<Object>}}
- */
-function createInstrumentModulator(zone, index, instrumentZoneModulator) {
+function createInstrumentModulator(zone: {instrumentModulatorIndex: number, presetModulatorIndex: number}[], index: number, instrumentZoneModulator: {}[]) {
   const modgen = createBagModGen(
     zone,
     zone[index].presetModulatorIndex,
@@ -315,12 +299,7 @@ function createInstrumentModulator(zone, index, instrumentZoneModulator) {
   }
 }
 
-/**
- * @param {Array.<Object>} zone
- * @param {number} index
- * @returns {{generator: Object, generatorInfo: Array.<Object>}}
- */
-function createPresetGenerator(zone, index, presetZoneGenerator) {
+function createPresetGenerator(zone: {presetGeneratorIndex: number}[], index: number, presetZoneGenerator: {}[]): {generator: Object, generatorInfo: Object[]} {
   const modgen = createBagModGen(
     zone,
     zone[index].presetGeneratorIndex,
@@ -334,13 +313,7 @@ function createPresetGenerator(zone, index, presetZoneGenerator) {
   }
 }
 
-/**
- * @param {Array.<Object>} zone
- * @param {number} index
- * @returns {{modulator: Object, modulatorInfo: Array.<Object>}}
- */
-function createPresetModulator(zone, index, presetZoneModulator) {
-  /** @type {{modgen: Object, modgenInfo: Array.<Object>}} */
+function createPresetModulator(zone: {presetModulatorIndex: number}[], index: number, presetZoneModulator: {}[]) {
   const modgen = createBagModGen(
     zone,
     zone[index].presetModulatorIndex,

@@ -1,6 +1,6 @@
-import Synthesizer from "./sound_font_synth"
-import View from "./synth_view"
-import MidiMessageHandler from "./midi_message_handler";
+import Synthesizer from "./sound_font_synth.ts"
+import View from "./synth_view.ts"
+import MidiMessageHandler from "./midi_message_handler.ts"
 
 /**
  * @constructor

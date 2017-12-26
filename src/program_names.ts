@@ -1,4 +1,4 @@
-export default {
+const ProgramNames: { [index: number]: string[] } = {
   0: [
     "Acoustic Piano",
     "Bright Piano",
@@ -130,3 +130,5 @@ export default {
     "Gunshot"
   ], 128: ["Rhythm Track"]
 }
+
+export default ProgramNames

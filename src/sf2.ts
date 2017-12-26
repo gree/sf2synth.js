@@ -1,45 +1,46 @@
-import { Parser } from "./riff"
-import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./sf2_data"
-import { readString } from "./helper"
-import Stream from "./stream"
-import { InfoNameTable } from "./constants"
+import { Parser, Chunk } from "./riff.ts"
+import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./sf2_data.ts"
+import { readString } from "./helper.ts"
+import Stream from "./stream.ts"
+import { InfoNameTable } from "./constants.ts"
+
+export interface SampleHeader {
+  sampleRate: number
+  sampleName: number
+  pitchCorrection: number
+  startLoop: number
+  endLoop: number
+  originalPitch: number
+}
+
+export interface InstrumentZone {
+  instrumentGeneratorIndex: number
+  instrumentModulatorIndex: number
+  presetModulatorIndex: number
+}
 
 export default class {
-  /** @type {ByteArray} */
-  input
-  /** @type {(Object|undefined)} */
-  parserOption
-  /** @type {Array.<Object>} */
-  presetHeader
-  /** @type {Array.<Object>} */
-  presetZone
-  /** @type {Array.<Object>} */
-  presetZoneModulator
-  /** @type {Array.<Object>} */
-  presetZoneGenerator
-  /** @type {Array.<Object>} */
-  instrument
-  /** @type {Array.<Object>} */
-  instrumentZone
-  /** @type {Array.<Object>} */
-  instrumentZoneModulator
-  /** @type {Array.<Object>} */
-  instrumentZoneGenerator
-  /** @type {Array.<Object>} */
-  sampleHeader
+  input: Uint8Array
+  parserOption: {} | undefined
+  presetHeader: {}[]
+  presetZone: {}[]
+  presetZoneModulator: {}[]
+  presetZoneGenerator: {}[]
+  instrument: { instrumentName: string, instrumentBagIndex: number }[]
+  instrumentZone: InstrumentZone[]
+  instrumentZoneModulator: {}[]
+  instrumentZoneGenerator: {}[]
+  sampleHeader: SampleHeader[]
+  sample: Int16Array[]
+  samplingData: Chunk
+  info: {}
 
-  /**
-   * @param {ByteArray} input
-   * @param {Object=} opt_params
-   * @constructor
-   */
-  constructor(input, opt_params = {}) {
+  constructor(input: Uint8Array, opt_params: { parserOption?: {} } = {}) {
     this.input = input
     this.parserOption = opt_params.parserOption
   }
 
   parse() {
-    /** @type {Parser} */
     const parser = new Parser(this.input, this.parserOption)
 
     // parse RIFF chunk
@@ -48,7 +49,6 @@ export default class {
       throw new Error('wrong chunk length')
     }
 
-    /** @type {?Chunk} */
     const chunk = parser.getChunk(0)
     if (chunk === null) {
       throw new Error('chunk not found')
@@ -58,11 +58,7 @@ export default class {
     this.input = null
   }
 
-  /**
-   * @param {Chunk} chunk
-   * @param {ByteArray} data
-   */
-  parseRiffChunk(chunk, data) {
+  parseRiffChunk(chunk: Chunk, data: Uint8Array) {
     const chunkList = getChunkList(chunk, data, "RIFF", "sfbk")
 
     if (chunkList.length !== 3) {
@@ -79,11 +75,7 @@ export default class {
     this.parsePdtaList(chunkList[2], data)
   }
 
-  /**
-   * @param {Chunk} chunk
-   * @param {ByteArray} data
-   */
-  parsePdtaList(chunk, data) {
+  parsePdtaList(chunk: Chunk, data: Uint8Array) {
     const chunkList = getChunkList(chunk, data, "LIST", "pdta")
 
     // check number of chunks
@@ -95,11 +87,11 @@ export default class {
     this.presetZone = parsePbag(chunkList[1], data)
     this.presetZoneModulator = parsePmod(chunkList[2], data)
     this.presetZoneGenerator = parsePgen(chunkList[3], data)
-    this.instrument = parseInst(chunkList[4], data)
-    this.instrumentZone = parseIbag(chunkList[5], data)
+    this.instrument = parseInst(chunkList[4], data) as any
+    this.instrumentZone = parseIbag(chunkList[5], data) as InstrumentZone[]
     this.instrumentZoneModulator = parseImod(chunkList[6], data)
     this.instrumentZoneGenerator = parseIgen(chunkList[7], data)
-    this.sampleHeader = parseShdr(chunkList[8], data)
+    this.sampleHeader = parseShdr(chunkList[8], data) as SampleHeader[]
     this.sample = loadSample(this.sampleHeader, this.samplingData.offset, data)
   }
 }
@@ -125,12 +117,7 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
   return parser.chunkList
 }
 
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Object}
- */
-function parseInfoList(chunk, data) {
+function parseInfoList(chunk: Chunk, data: Uint8Array): {} {
   const info = {}
   const chunkList = getChunkList(chunk, data, "LIST", "INFO")
 
@@ -143,12 +130,7 @@ function parseInfoList(chunk, data) {
   return info
 }
 
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @return {Chunk}
- */
-function parseSdtaList(chunk, data) {
+function parseSdtaList(chunk: Chunk, data: Uint8Array): Chunk {
   const chunkList = getChunkList(chunk, data, "LIST", "sdta")
 
   if (chunkList.length !== 1) {
@@ -158,13 +140,7 @@ function parseSdtaList(chunk, data) {
   return chunkList[0]
 }
 
-/**
- * @param {Chunk} chunk
- * @param {ByteArray} data
- * @param {string} type
- * @return {Array.<Object>}
- */
-function parseChunk(chunk, data, type, factory) {
+function parseChunk(chunk: Chunk, data: Uint8Array, type: string, factory): {}[] {
   const result = []
 
   if (chunk.type !== type) {
@@ -212,7 +188,7 @@ function adjustSampleData(sample, sampleRate) {
   }
 }
 
-function loadSample(sampleHeader, samplingDataOffset, data) {
+function loadSample(sampleHeader, samplingDataOffset, data): Int16Array[] {
   const samples = []
   for (let header of sampleHeader) {
     let sample = new Int16Array(new Uint8Array(data.subarray(

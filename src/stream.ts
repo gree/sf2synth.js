@@ -1,16 +1,13 @@
 export default class Stream {
+  private data: Uint8Array
+  ip: number
+
   constructor(data, offset) {
     this.data = data
     this.ip = offset
   }
 
-  /**
-   * @param {string} data 
-   * @param {number} start 
-   * @param {number} end 
-   * @return {string}
-   */
-  readString(size) {
+  readString(size: number): string {
     const str = String.fromCharCode.apply(null, this.data.subarray(this.ip, this.ip += size))
     const nullLocation = str.indexOf("\u0000")
     if (nullLocation > 0) {
@@ -19,11 +16,11 @@ export default class Stream {
     return str
   }
 
-  readWORD() {
+  readWORD(): number {
     return this.data[this.ip++] | (this.data[this.ip++] << 8)
   }
 
-  readDWORD() {
+  readDWORD(): number {
     return (
       this.data[this.ip++] | 
       (this.data[this.ip++] << 8) | 
@@ -36,7 +33,7 @@ export default class Stream {
     return this.data[this.ip++]
   }
 
-  readAt(offset) {
+  readAt(offset: number) {
     return this.data[this.ip + offset]
   }
 

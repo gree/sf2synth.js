@@ -1,17 +1,12 @@
+import Synthesizer from "./sound_font_synth"
+
 export default class MidiMessageHandler {
-  /** @type {Array.<number>} */
-  RpnMsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  private RpnMsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  private RpnLsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  synth: Synthesizer
 
-  /** @type {Array.<number>} */
-  RpnLsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-  /**
-   * @param {Array.<number>} message
-   */
-  processMidiMessage(message) {
-    /** @type {number} */
+  processMidiMessage(message: number[]) {
     const channel = message[0] & 0x0f
-    /** @type {Synthesizer} */
     const { synth } = this
 
     if (!synth) {
