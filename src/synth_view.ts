@@ -1,13 +1,11 @@
-/**
- * @type {Array.<string>}
- * @const
- */
-import ProgramNames from "./program_names"
+import Synthesizer from "./sound_font_synth.ts"
+import ProgramNames from "./program_names.ts"
+import { DOMElement } from "react";
 
 function render(str) {
   const wrapper = document.createElement("div");
   wrapper.innerHTML = str.replace(/^\s+/, "");
-  return wrapper.firstChild;
+  return wrapper.firstElementChild;
 }
 
 function renderKeys() {
@@ -47,27 +45,30 @@ function programNamesFromBankSet(bankSet) {
   return bankSet.map(bank => bank.map(s => s.name))
 }
 
-function mergeProgramNames(left, right) {
+function mergeProgramNames(left: {[index: number]: string[]}, right: {[index: number]: string[]}) {
   function mergedKeys(a, b) {
     return new Set([...Object.keys(a), ...Object.keys(b)])
   }
   const banks = mergedKeys(left, right)
   const result = {}
-  for (let bank of banks) {
+  banks.forEach(bank => {
     const l = left[bank] || []
     const r = right[bank] || []
-    const list = {}
+    const list: { [index: number]: string} = {}
     const programs = mergedKeys(l, r)
-    for (let p of programs) {
+    programs.forEach(p => {
       list[p] = `${l[p] || "None"} (${r[p] || "None"})`
-    }
+    })
     result[bank] = list
-  }
+  })
   return result
 }
 
 export default class View {
-  draw(synth) {
+  private element: Element
+  private drag: boolean = false
+
+  draw(synth: Synthesizer): Element {
     const element = this.element = render(`<div />`);
     const programNames = mergeProgramNames(programNamesFromBankSet(synth.soundFont.bankSet), ProgramNames)
 
@@ -80,7 +81,8 @@ export default class View {
       const select = item.querySelector('select');
       if (select) {
         select.addEventListener('change', event => {
-          synth.programChange(channel, parseInt(event.target.value, 10));
+          const target = event.target as HTMLSelectElement
+          synth.programChange(channel, parseInt(target.value, 10));
         }, false);
         select.selectedIndex = synth.channels[i].instrument;
       }
@@ -91,12 +93,12 @@ export default class View {
 
         notes[j].addEventListener('mousedown', event => {
           event.preventDefault();
-          synth.drag = true;
+          this.drag = true;
           synth.noteOn(channel, key, 127);
         });
         notes[j].addEventListener('mouseover', event => {
           event.preventDefault();
-          if (synth.drag) {
+          if (this.drag) {
             synth.noteOn(channel, key, 127);
           }
         });
@@ -106,7 +108,7 @@ export default class View {
         });
         notes[j].addEventListener('mouseup', event => {
           event.preventDefault();
-          synth.drag = false;
+          this.drag = false;
           synth.noteOff(channel, key, 0);
         });
       }
@@ -155,7 +157,7 @@ export default class View {
       return;
     }
 
-    const select = this.getInstrumentElement(channel).querySelector(".program select")
+    const select: HTMLSelectElement = this.getInstrumentElement(channel).querySelector(".program select")
 
     if (select) {
       select.value = instrument;

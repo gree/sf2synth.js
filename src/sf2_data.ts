@@ -1,27 +1,18 @@
-import { GeneratorEnumeratorTable } from "./constants"
+import { GeneratorEnumeratorTable } from "./constants.ts"
 
 export class VersionTag {
-  /** @type {number} */
-  major
-  /** @type {number} */
-  minor
+  major: number
+  minor: number
 }
 
 export class PresetHeader {
-  /** @type {string} */
-  presetName
-  /** @type {number} */
-  preset
-  /** @type {number} */
-  bank
-  /** @type {number} */
-  presetBagIndex
-  /** @type {number} */
-  library
-  /** @type {number} */
-  genre
-  /** @type {number} */
-  morphology
+  presetName: string
+  preset: number
+  bank: number
+  presetBagIndex: number
+  library: number
+  genre: number
+  morphology: number
 
   static parse(stream) {
     const p = new PresetHeader()
@@ -37,10 +28,8 @@ export class PresetHeader {
 }
 
 export class PresetBag {
-  /** @type {number} */
-  presetGeneratorIndex
-  /** @type {number} */
-  presetModulatorIndex
+  presetGeneratorIndex: number
+  presetModulatorIndex: number
 
   static parse(stream) {
     const p = new PresetBag()
@@ -51,16 +40,12 @@ export class PresetBag {
 }
 
 export class ModulatorList {
-  /** @type {Modulator} */
-  sourceOper
-  /** @type {Generator} */
-  destinationOper
-  /** @type {Object} */
-  value
-  /** @type {Modulator} */
-  amountSourceOper
-  /** @type {Generator} */
-  transOper
+  sourceOper: number
+  destinationOper: Generator
+  value: Object
+  amountSourceOper: number
+  transOper: Generator
+  type: string
 
   static parse(stream) {
     const t = new ModulatorList()
@@ -106,10 +91,8 @@ export class ModulatorList {
 }
 
 export class GeneratorList {
-  /** @type {string} */
-  type
-  /** @type {Object} */
-  value
+  type: string
+  value: Object
 
   static parse(stream) {
     const t = new ModulatorList()
@@ -147,10 +130,8 @@ export class GeneratorList {
 }
 
 export class Instrument {
-  /** @type {string} */
-  instrumentName
-  /** @type {number} */
-  instrumentBagIndex
+  instrumentName: string
+  instrumentBagIndex: number
   
   static parse(stream) {
     const t = new Instrument()
@@ -161,10 +142,8 @@ export class Instrument {
 }
 
 export class InstrumentBag {
-  /** @type {number} */
-  instrumentGeneratorIndex
-  /** @type {number} */
-  instrumentModulatorIndex
+  instrumentGeneratorIndex: number
+  instrumentModulatorIndex: number
   
   static parse(stream) {
     const t = new InstrumentBag()
@@ -175,26 +154,16 @@ export class InstrumentBag {
 }
 
 export class Sample {
-  /** @type {string} */
-  sampleName
-  /** @type {number} */
-  start
-  /** @type {number} */
-  end
-  /** @type {number} */
-  startLoop
-  /** @type {number} */
-  endLoop
-  /** @type {number} */
-  sampleRate
-  /** @type {number} */
-  originalPitch
-  /** @type {number} */
-  pitchCorrection
-  /** @type {number} */
-  sampleLink
-  /** @type {SampleLink} */
-  sampleType
+  sampleName: string
+  start: number
+  end: number
+  startLoop: number
+  endLoop: number
+  sampleRate: number
+  originalPitch: number
+  pitchCorrection: number
+  sampleLink: number
+  sampleType: number
 
   static parse(stream) {
     const s = new Sample()

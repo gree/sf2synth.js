@@ -1,2 +1,2 @@
-import WebMidiLink from "../src/wml"
+import WebMidiLink from "../src/wml.ts"
 export default WebMidiLink

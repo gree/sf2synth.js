@@ -1,6 +1,6 @@
-import SynthesizerNote from "./sound_font_synth_note"
-import Parser from "./sf2"
-import SoundFont from "./sound_font"
+import SynthesizerNote from "./sound_font_synth_note.ts"
+import Parser from "./sf2.ts"
+import SoundFont from "./sound_font.ts"
 
 const BASE_VOLUME = 0.4
 
@@ -9,11 +9,25 @@ class Channel {
   volume = 0
   pitchBend = 0
   pitchBendSensitivity = 0
-  /** @type {<Array.<SynthesizerNote>} */
-  currentNoteOn = []
+  panpot = 0
+  currentNoteOn: SynthesizerNote[] = []
 }
 
-class DummyView {
+interface View {
+  draw()
+  remove()
+  getInstrumentElement()
+  getKeyElement()
+  noteOn(channelNumber: number, key: number)
+  noteOff(channelNumber: number, key: number)
+  programChange(channelNumber: number, instrument: number)
+  volumeChange(channelNumber: number, volume: number)
+  panpotChange(channelNumber: number, panpot: number)
+  pitchBend(channelNumber: number, pitchBend: number)
+  pitchBendSensitivity(channelNumber: number, sensitivity: number)
+}
+
+class DummyView implements View {
   draw() { }
   remove() { }
   getInstrumentElement() { }
@@ -27,30 +41,21 @@ class DummyView {
   pitchBendSensitivity() { }
 }
 
-/**
- * @constructor
- */
 export default class Synthesizer {
+  input: Uint8Array = null
+  bank: number = 0
+  bufferSize: number = 1024
+  ctx: AudioContext
+  gainMaster: GainNode
+  channels: Channel[] = []
+  masterVolume: number = 1.0
+  view: View = new DummyView()
+  soundFont: SoundFont
+
   constructor(ctx) {
-    /** @type {Uint8Array} */
-    this.input = null
-    /** @type {number} */
-    this.bank = 0
-    /** @type {number} */
-    this.bufferSize = 1024
-    /** @type {AudioContext} */
     this.ctx = ctx
-    /** @type {AudioGainNode} */
     this.gainMaster = this.ctx.createGain()
-    /** @type {Array.<Channel>} */
-    this.channels = []
-    /** @type {number} */
-    this.masterVolume = 1.0
-    /** @type {View} */
-    this.view = new DummyView()
-
     this.setMasterVolume(this.masterVolume)
-
     this.init()
   }
 
@@ -65,10 +70,7 @@ export default class Synthesizer {
     }
   }
 
-  /**
-   * @param {Uint8Array} input
-   */
-  refreshInstruments(input) {
+  refreshInstruments(input: Uint8Array) {
     this.input = input
 
     const parser = new Parser(input)
@@ -85,12 +87,7 @@ export default class Synthesizer {
     this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
   }
 
-  /**
-   * @param {number} channelNumber NoteOn するチャンネル.
-   * @param {number} key NoteOn するキー.
-   * @param {number} velocity 強さ.
-   */
-  noteOn(channelNumber, key, velocity) {
+  noteOn(channelNumber: number, key: number, velocity: number) {
     if (!this.soundFont) {
       return
     }
@@ -123,12 +120,7 @@ export default class Synthesizer {
     this.view.noteOn(channelNumber, key)
   }
 
-  /**
-   * @param {number} channelNumber NoteOff するチャンネル.
-   * @param {number} key NoteOff するキー.
-   * @param {number} velocity 強さ.
-   */
-  noteOff(channelNumber, key, velocity) {
+  noteOff(channelNumber: number, key: number, velocity: number) {
     if (!this.soundFont) {
       return
     }
@@ -156,39 +148,22 @@ export default class Synthesizer {
     this.view.noteOff(channelNumber, key)
   }
 
-  /**
-   * @param {number} channelNumber 音色を変更するチャンネル.
-   * @param {number} instrument 音色番号.
-   */
-  programChange(channelNumber, instrument) {
+  programChange(channelNumber: number, instrument: number) {
     this.view.programChange(channelNumber, instrument)
     this.channels[channelNumber].instrument = instrument
   }
 
-  /**
-   * @param {number} channelNumber 音量を変更するチャンネル.
-   * @param {number} volume 音量(0-127).
-   */
-  volumeChange(channelNumber, volume) {
+  volumeChange(channelNumber: number, volume: number) {
     this.view.volumeChange(channelNumber, volume)
     this.channels[channelNumber].volume = volume
   }
 
-  /**
-   * @param {number} channelNumber panpot を変更するチャンネル.
-   * @param {number} panpot panpot(0-127).
-   */
-  panpotChange(channelNumber, panpot) {
+  panpotChange(channelNumber: number, panpot: number) {
     this.view.panpotChange(channelNumber, panpot)
     this.channels[channelNumber].panpot = panpot
   }
 
-  /**
-   * @param {number} channelNumber panpot を変更するチャンネル.
-   * @param {number} lowerByte
-   * @param {number} higherByte
-   */
-  pitchBend(channelNumber, lowerByte, higherByte) {
+  pitchBend(channelNumber: number, lowerByte: number, higherByte: number) {
     const bend = (lowerByte & 0x7f) | ((higherByte & 0x7f) << 7)
     const channel = this.channels[channelNumber]
     const currentNoteOn = channel.currentNoteOn
@@ -203,19 +178,12 @@ export default class Synthesizer {
     channel.pitchBend = bend
   }
 
-  /**
-   * @param {number} channelNumber pitch bend sensitivity を変更するチャンネル.
-   * @param {number} sensitivity
-   */
-  pitchBendSensitivity(channelNumber, sensitivity) {
+  pitchBendSensitivity(channelNumber: number, sensitivity: number) {
     this.view.pitchBendSensitivity(channelNumber, sensitivity)
     this.channels[channelNumber].pitchBendSensitivity = sensitivity
   }
 
-  /**
-   * @param {number} channelNumber 音を消すチャンネル.
-   */
-  allSoundOff(channelNumber) {
+  allSoundOff(channelNumber: number) {
     const currentNoteOn = this.channels[channelNumber].currentNoteOn
 
     while (currentNoteOn.length > 0) {
@@ -223,10 +191,7 @@ export default class Synthesizer {
     }
   }
 
-  /**
-   * @param {number} channelNumber リセットするチャンネル
-   */
-  resetAllControl(channelNumber) {
+  resetAllControl(channelNumber: number) {
     this.pitchBend(channelNumber, 0x00, 0x40); // 8192
   }
 }

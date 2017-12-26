@@ -1,31 +1,27 @@
 export class Parser {
-  /**
-  * @param {ByteArray} input input buffer.
-  * @param {Object=} opt_params option parameters.
-  * @constructor
-  */
-  constructor(input, opt_params = {}) {
-    /** @type {ByteArray} */
+  chunkList: Chunk[] = []
+  
+  private input: Uint8Array
+  private ip: number
+  private length: number
+  private offset: number
+  private padding: boolean
+  private bigEndian: boolean
+
+  constructor(input: Uint8Array, opt_params: {} = {}) {
     this.input = input
-    /** @type {number} */
     this.ip = opt_params['index'] || 0
-    /** @type {number} */
     this.length = opt_params['length'] || input.length - this.ip
-    /** @type {Array.<Chunk>} */
     this.chunkList = []
-    /** @type {number} */
     this.offset = this.ip
-    /** @type {boolean} */
     this.padding =
       opt_params['padding'] !== void 0 ? opt_params['padding'] : true
-    /** @type {boolean} */
     this.bigEndian =
       opt_params['bigEndian'] !== void 0 ? opt_params['bigEndian'] : false
   }
   
   parse() {
-    /** @type {number} */
-    var length = this.length + this.offset
+    const length = this.length + this.offset
 
     this.chunkList = []
 
@@ -35,12 +31,9 @@ export class Parser {
   }
 
   parseChunk() {
-    /** @type {ByteArray} */
-    var input = this.input
-    /** @type {number} */
-    var ip = this.ip
-    /** @type {number} */
-    var size
+    const input = this.input
+    let ip = this.ip
+    let size
 
     this.chunkList.push(new Chunk(
       String.fromCharCode(input[ip++], input[ip++], input[ip++], input[ip++]),
@@ -63,13 +56,8 @@ export class Parser {
     this.ip = ip
   }
 
-  /**
-   * @param {number} index chunk index.
-   * @return {Chunk}
-   */
-  getChunk(index) {
-    /** @type {Chunk} */
-    var chunk = this.chunkList[index]
+  getChunk(index: number) {
+    const chunk = this.chunkList[index]
 
     if (chunk === void 0) {
       return null
@@ -78,27 +66,19 @@ export class Parser {
     return chunk
   }
 
-  /**
-   * @return {number}
-   */
   getNumberOfChunks() {
     return this.chunkList.length
   }
 }
 
 export class Chunk {
-  /**
-   * @param {string} type
-   * @param {number} size
-   * @param {number} offset
-   * @constructor
-   */
-  constructor(type, size, offset) {
-    /** @type {string} */
+  type: string
+  size: number
+  offset: number
+
+  constructor(type: string, size: number, offset: number) {
     this.type = type
-    /** @type {number} */
     this.size = size
-    /** @type {number} */
     this.offset = offset
   }
 }

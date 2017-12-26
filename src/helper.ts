@@ -1,10 +1,4 @@
-/**
- * @param {string} data 
- * @param {number} start 
- * @param {number} end 
- * @return {string}
- */
-export function readString(data, start, end) {
+export function readString(data: Uint8Array, start: number, end: number): string {
   const str = String.fromCharCode.apply(null, data.subarray(start, end))
   const nullLocation = str.indexOf("\u0000")
   if (nullLocation > 0) {
