@@ -1,4 +1,4 @@
-import { RiffParser, Chunk } from "./RiffParser.ts"
+import { parseRiff, Chunk } from "./RiffParser.ts"
 import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs.ts"
 import { readString } from "./readString.ts"
 import Stream from "./Stream.ts"
@@ -41,15 +41,14 @@ export default class {
   }
 
   parse() {
-    const parser = new RiffParser(this.input, this.parserOption)
-
     // parse RIFF chunk
-    parser.parse()
-    if (parser.chunkList.length !== 1) {
+    const chunkList = parseRiff(this.input, 0, this.input.length, this.parserOption)
+
+    if (chunkList.length !== 1) {
       throw new Error('wrong chunk length')
     }
 
-    const chunk = parser.getChunk(0)
+    const chunk = chunkList[0]
     if (chunk === null) {
       throw new Error('chunk not found')
     }
@@ -111,10 +110,7 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
   }
 
   // read structure
-  const parser = new RiffParser(data, {'index': stream.ip, 'length': chunk.size - 4})
-  parser.parse()
-
-  return parser.chunkList
+  return parseRiff(data, stream.ip, chunk.size - 4)
 }
 
 function parseInfoList(chunk: Chunk, data: Uint8Array): {} {

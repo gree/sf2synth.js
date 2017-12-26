@@ -1,74 +1,35 @@
-export class RiffParser {
-  chunkList: Chunk[] = []
-  
-  private input: Uint8Array
-  private ip: number
-  private length: number
-  private offset: number
-  private padding: boolean
-  private bigEndian: boolean
+import Stream from "./Stream"
 
-  constructor(input: Uint8Array, opt_params: {} = {}) {
-    this.input = input
-    this.ip = opt_params['index'] || 0
-    this.length = opt_params['length'] || input.length - this.ip
-    this.chunkList = []
-    this.offset = this.ip
-    this.padding =
-      opt_params['padding'] !== void 0 ? opt_params['padding'] : true
-    this.bigEndian =
-      opt_params['bigEndian'] !== void 0 ? opt_params['bigEndian'] : false
-  }
-  
-  parse() {
-    const length = this.length + this.offset
+function parseChunk(input: Uint8Array, ip: number, bigEndian: boolean): Chunk {
+  const stream = new Stream(input, ip)
+  const type = stream.readString(4)
+  const size = stream.readDWORD(bigEndian)
+  return new Chunk(type, size, stream.ip)
+}
 
-    this.chunkList = []
+interface Options {
+  padding?: boolean,
+  bigEndian?: boolean
+}
 
-    while (this.ip < length) {
-      this.parseChunk()
-    }
-  }
+export function parseRiff(input: Uint8Array, index: number = 0, length: number, { padding = true, bigEndian = false }: Options = {}) {
+  const chunkList: Chunk[] = []
+  const end = length + index
+  let ip = index
 
-  parseChunk() {
-    const input = this.input
-    let ip = this.ip
-    let size
-
-    this.chunkList.push(new Chunk(
-      String.fromCharCode(input[ip++], input[ip++], input[ip++], input[ip++]),
-      (size = this.bigEndian ?
-        ((input[ip++] << 24) | (input[ip++] << 16) |
-          (input[ip++] <<  8) | (input[ip++]      )) >>> 0 :
-        ((input[ip++]      ) | (input[ip++] <<  8) |
-          (input[ip++] << 16) | (input[ip++] << 24)) >>> 0
-      ),
-      ip
-    ))
-
-    ip += size
-
+  while (ip < end) {
+    const chunk = parseChunk(input, ip, bigEndian)
+    ip = chunk.offset + chunk.size
+    
     // padding
-    if (this.padding && ((ip - this.offset) & 1) === 1) {
+    if (padding && ((ip - index) & 1) === 1) {
       ip++
     }
-
-    this.ip = ip
+    
+    chunkList.push(chunk)
   }
 
-  getChunk(index: number) {
-    const chunk = this.chunkList[index]
-
-    if (chunk === void 0) {
-      return null
-    }
-
-    return chunk
-  }
-
-  getNumberOfChunks() {
-    return this.chunkList.length
-  }
+  return chunkList
 }
 
 export class Chunk {
