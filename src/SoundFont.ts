@@ -289,7 +289,7 @@ function createInstrumentGenerator(zone: InstrumentBag[], index: number, instrum
 function createInstrumentModulator(zone: InstrumentBag[], index: number, instrumentZoneModulator: {}[]) {
   const modgen = createBagModGen(
     zone,
-    zone[index].presetModulatorIndex,
+    zone[index].instrumentModulatorIndex,
     zone[index + 1] ? zone[index + 1].instrumentModulatorIndex : instrumentZoneModulator.length,
     instrumentZoneModulator
   )
