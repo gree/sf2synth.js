@@ -1,5 +1,5 @@
-import Synthesizer from "./sound_font_synth.ts"
-import ProgramNames from "./program_names.ts"
+import Synthesizer from "./Synthesizer.ts"
+import ProgramNames from "./ProgramNames.ts"
 import { DOMElement } from "react";
 
 function render(str) {

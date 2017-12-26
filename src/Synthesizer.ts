@@ -1,6 +1,6 @@
-import SynthesizerNote from "./sound_font_synth_note.ts"
-import Parser from "./sf2.ts"
-import SoundFont from "./sound_font.ts"
+import SynthesizerNote from "./SynthesizerNote.ts"
+import Parser from "./Parser.ts"
+import SoundFont from "./SoundFont.ts"
 
 const BASE_VOLUME = 0.4
 

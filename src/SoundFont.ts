@@ -1,4 +1,4 @@
-import Parser, { InstrumentZone } from "./sf2"
+import Parser, { InstrumentZone } from "./Parser.ts"
 
 /**
  * Parser で読み込んだサウンドフォントのデータを

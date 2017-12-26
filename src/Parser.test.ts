@@ -1,6 +1,6 @@
 const fs = require("fs")
-import Parser from "./sf2.ts"
-import SoundFont from "./sound_font.ts"
+import Parser from "./Parser.ts"
+import SoundFont from "./SoundFont.ts"
 
 test('Parser', () => {
   const input = fs.readFileSync("./fixture/clarinet_angel_pure_v1.1.sf2")

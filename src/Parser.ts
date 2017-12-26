@@ -1,8 +1,8 @@
-import { Parser, Chunk } from "./riff.ts"
-import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./sf2_data.ts"
-import { readString } from "./helper.ts"
-import Stream from "./stream.ts"
-import { InfoNameTable } from "./constants.ts"
+import { RiffParser, Chunk } from "./RiffParser.ts"
+import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs.ts"
+import { readString } from "./readString.ts"
+import Stream from "./Stream.ts"
+import { InfoNameTable } from "./Constants.ts"
 
 export interface SampleHeader {
   sampleRate: number
@@ -41,7 +41,7 @@ export default class {
   }
 
   parse() {
-    const parser = new Parser(this.input, this.parserOption)
+    const parser = new RiffParser(this.input, this.parserOption)
 
     // parse RIFF chunk
     parser.parse()
@@ -111,7 +111,7 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
   }
 
   // read structure
-  const parser = new Parser(data, {'index': stream.ip, 'length': chunk.size - 4})
+  const parser = new RiffParser(data, {'index': stream.ip, 'length': chunk.size - 4})
   parser.parse()
 
   return parser.chunkList

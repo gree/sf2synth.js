@@ -1,4 +1,4 @@
-import { GeneratorEnumeratorTable } from "./constants.ts"
+import { GeneratorEnumeratorTable } from "./Constants.ts"
 
 export class VersionTag {
   major: number

@@ -1,4 +1,4 @@
-import { Instrument } from "./sf2_data";
+import { Instrument } from "./Structs.ts";
 
 interface InstrumentState {
   channel: number

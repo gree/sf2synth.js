@@ -1,4 +1,4 @@
-export class Parser {
+export class RiffParser {
   chunkList: Chunk[] = []
   
   private input: Uint8Array
