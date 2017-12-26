@@ -1,23 +1,8 @@
-import { parseRiff, Chunk } from "./RiffParser.ts"
-import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs.ts"
-import { readString } from "./readString.ts"
-import Stream from "./Stream.ts"
-import { InfoNameTable } from "./Constants.ts"
-
-export interface SampleHeader {
-  sampleRate: number
-  sampleName: number
-  pitchCorrection: number
-  startLoop: number
-  endLoop: number
-  originalPitch: number
-}
-
-export interface InstrumentZone {
-  instrumentGeneratorIndex: number
-  instrumentModulatorIndex: number
-  presetModulatorIndex: number
-}
+import { parseRiff, Chunk } from "./RiffParser"
+import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs"
+import { readString } from "./readString"
+import Stream from "./Stream"
+import { InfoNameTable } from "./Constants"
 
 export default class {
   input: Uint8Array
@@ -27,10 +12,10 @@ export default class {
   presetZoneModulator: {}[]
   presetZoneGenerator: {}[]
   instrument: { instrumentName: string, instrumentBagIndex: number }[]
-  instrumentZone: InstrumentZone[]
+  instrumentZone: InstrumentBag[]
   instrumentZoneModulator: {}[]
   instrumentZoneGenerator: {}[]
-  sampleHeader: SampleHeader[]
+  sampleHeader: Sample[]
   sample: Int16Array[]
   samplingData: Chunk
   info: {}
@@ -87,10 +72,10 @@ export default class {
     this.presetZoneModulator = parsePmod(chunkList[2], data)
     this.presetZoneGenerator = parsePgen(chunkList[3], data)
     this.instrument = parseInst(chunkList[4], data) as any
-    this.instrumentZone = parseIbag(chunkList[5], data) as InstrumentZone[]
+    this.instrumentZone = parseIbag(chunkList[5], data)
     this.instrumentZoneModulator = parseImod(chunkList[6], data)
     this.instrumentZoneGenerator = parseIgen(chunkList[7], data)
-    this.sampleHeader = parseShdr(chunkList[8], data) as SampleHeader[]
+    this.sampleHeader = parseShdr(chunkList[8], data)
     this.sample = loadSample(this.sampleHeader, this.samplingData.offset, data)
   }
 }
@@ -153,15 +138,15 @@ function parseChunk(chunk: Chunk, data: Uint8Array, type: string, factory): {}[]
   return result
 }
 
-const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", stream => PresetHeader.parse(stream))
-const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", stream => PresetBag.parse(stream))
-const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", stream => Instrument.parse(stream))
-const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", stream => InstrumentBag.parse(stream))
-const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", stream => ModulatorList.parse(stream))
-const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", stream => ModulatorList.parse(stream))
-const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", stream => GeneratorList.parse(stream))
-const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", stream => GeneratorList.parse(stream))
-const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => Sample.parse(stream))
+const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", stream => PresetHeader.parse(stream)) as PresetHeader[]
+const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", stream => PresetBag.parse(stream)) as PresetBag[]
+const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", stream => Instrument.parse(stream)) as Instrument[]
+const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", stream => InstrumentBag.parse(stream)) as InstrumentBag[]
+const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", stream => ModulatorList.parse(stream)) as ModulatorList[]
+const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", stream => ModulatorList.parse(stream)) as ModulatorList[]
+const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", stream => GeneratorList.parse(stream)) as GeneratorList[]
+const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", stream => GeneratorList.parse(stream)) as GeneratorList[]
+const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => Sample.parse(stream)) as Sample[]
 
 function adjustSampleData(sample, sampleRate) {
   let multiply = 1

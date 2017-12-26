@@ -1,4 +1,5 @@
-import Parser, { InstrumentZone } from "./Parser"
+import Parser from "./Parser"
+import { InstrumentBag, PresetBag } from "./Structs"
 
 /**
  * Parser で読み込んだサウンドフォントのデータを
@@ -64,7 +65,7 @@ export default class SoundFont {
 
 function createInstrument({ instrument, instrumentZone, instrumentZoneGenerator, instrumentZoneModulator }: 
   { instrument: { instrumentName: string, instrumentBagIndex: number }[], 
-    instrumentZone: InstrumentZone[], 
+    instrumentZone: InstrumentBag[], 
     instrumentZoneGenerator: {}[], 
     instrumentZoneModulator: {}[] 
   }): 
@@ -271,7 +272,7 @@ function createBagModGen(zone: {}[], indexStart: number, indexEnd: number, zoneM
   return { modgen, modgenInfo }
 }
 
-function createInstrumentGenerator(zone: {instrumentGeneratorIndex: number}[], index: number, instrumentZoneGenerator: {}[]) {
+function createInstrumentGenerator(zone: InstrumentBag[], index: number, instrumentZoneGenerator: {}[]) {
   const modgen = createBagModGen(
     zone,
     zone[index].instrumentGeneratorIndex,
@@ -285,7 +286,7 @@ function createInstrumentGenerator(zone: {instrumentGeneratorIndex: number}[], i
   }
 }
 
-function createInstrumentModulator(zone: {instrumentModulatorIndex: number, presetModulatorIndex: number}[], index: number, instrumentZoneModulator: {}[]) {
+function createInstrumentModulator(zone: InstrumentBag[], index: number, instrumentZoneModulator: {}[]) {
   const modgen = createBagModGen(
     zone,
     zone[index].presetModulatorIndex,
@@ -299,7 +300,7 @@ function createInstrumentModulator(zone: {instrumentModulatorIndex: number, pres
   }
 }
 
-function createPresetGenerator(zone: {presetGeneratorIndex: number}[], index: number, presetZoneGenerator: {}[]): {generator: Object, generatorInfo: Object[]} {
+function createPresetGenerator(zone: PresetBag[], index: number, presetZoneGenerator: {}[]): {generator: Object, generatorInfo: Object[]} {
   const modgen = createBagModGen(
     zone,
     zone[index].presetGeneratorIndex,
@@ -313,7 +314,7 @@ function createPresetGenerator(zone: {presetGeneratorIndex: number}[], index: nu
   }
 }
 
-function createPresetModulator(zone: {presetModulatorIndex: number}[], index: number, presetZoneModulator: {}[]) {
+function createPresetModulator(zone: PresetBag[], index: number, presetZoneModulator: {}[]) {
   const modgen = createBagModGen(
     zone,
     zone[index].presetModulatorIndex,
