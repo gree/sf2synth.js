@@ -13,18 +13,22 @@ module.exports = {
     libraryTarget: "umd"
   },
   module: {
-    preLoaders: [
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: "eslint-loader"
-      }
-    ],
-    loaders: [
+    rules: [
       {
         test: /\.js$/,
         exclude: /node_modules/,
         loader: "babel-loader"
+      },
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        loader: "eslint-loader",
+        enforce: "pre"
+      },
+      {
+        test: /\.ts$/,
+        exclude: /node_modules/,
+        loader: "ts-loader"
       }
     ]
   }
