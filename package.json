@@ -6,21 +6,45 @@
     "sf2synth": "sf2.parser.min.js"
   },
   "scripts": {
-    "start": "webpack --watch"
+    "start": "webpack --watch",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
+    "@types/jest": "^21.1.9",
+    "@types/node": "^8.5.2",
+    "assert": "^1.4.1",
     "babel-cli": "^6.16.0",
     "babel-core": "^6.17.0",
     "babel-eslint": "^8.1.0",
+    "babel-jest": "^22.0.4",
     "babel-preset-stage-2": "^6.24.1",
     "eslint": "^4.14.0",
     "eslint-loader": "^1.5.0",
+    "jest": "^22.0.4",
+    "regenerator-runtime": "^0.11.1",
+    "ts-jest": "^22.0.0",
     "ts-loader": "^3.2.0",
     "typescript": "^2.6.2",
     "webpack": "^3.10.0",
     "webpack-dev-server": "^2.9.7"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "js"
+    ],
+    "globals": {
+      "ts-jest": {
+        "useBabelrc": true
+      }
+    }
   }
 }
