@@ -7,7 +7,7 @@ function parseChunk(input: Uint8Array, ip: number, bigEndian: boolean): Chunk {
   return new Chunk(type, size, stream.ip)
 }
 
-interface Options {
+export interface Options {
   padding?: boolean,
   bigEndian?: boolean
 }

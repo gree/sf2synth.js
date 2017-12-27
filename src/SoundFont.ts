@@ -1,4 +1,4 @@
-import Parser from "./Parser"
+import { ParseResult } from "./Parser"
 import { InstrumentBag, PresetBag, Instrument, ModulatorList, PresetHeader, RangeValue, AmountValue } from "./Structs"
 
 /**
@@ -150,7 +150,7 @@ interface Bank {
   }
 }
 
-function createAllInstruments(parser: Parser): { [index: number]: Bank } {
+function createAllInstruments(parser: ParseResult): { [index: number]: Bank } {
   const presets = createPreset(parser)
   const instruments = createInstrument(parser)
   const banks: { [index: number]: Bank } = {}
@@ -225,7 +225,7 @@ export interface NoteInfo {
   velRange: RangeValue
 }
 
-function createNoteInfo(parser: Parser, targetGenerator: ModGen, baseGenerator: ModGen): NoteInfo|null {
+function createNoteInfo(parser: ParseResult, targetGenerator: ModGen, baseGenerator: ModGen): NoteInfo|null {
   const generator = { ...baseGenerator, ...targetGenerator }
 
   const { keyRange, sampleID, velRange } = generator as any

@@ -1,12 +1,10 @@
-import { parseRiff, Chunk } from "./RiffParser"
+import { parseRiff, Chunk, Options as RiffParserOptions } from "./RiffParser"
 import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs"
 import { readString } from "./readString"
 import Stream from "./Stream"
 import { InfoNameTable } from "./Constants"
 
-export default class {
-  input: Uint8Array|null
-  parserOption: {} | undefined
+export interface ParseResult {
   presetHeader: PresetHeader[]
   presetZone: PresetBag[]
   presetZoneModulator: ModulatorList[]
@@ -19,49 +17,42 @@ export default class {
   sample: Int16Array[]
   samplingData: Chunk
   info: {}
+}
 
-  constructor(input: Uint8Array, opt_params: { parserOption?: {} } = {}) {
-    this.input = input
-    this.parserOption = opt_params.parserOption
+export default function parse(input: Uint8Array, option: RiffParserOptions = {}): ParseResult {
+
+  // parse RIFF chunk
+  const chunkList = parseRiff(input, 0, input.length, option)
+
+  if (chunkList.length !== 1) {
+    throw new Error('wrong chunk length')
   }
 
-  parse() {
-    const input = this.input!
-
-    // parse RIFF chunk
-    const chunkList = parseRiff(input, 0, input.length, this.parserOption)
-
-    if (chunkList.length !== 1) {
-      throw new Error('wrong chunk length')
-    }
-
-    const chunk = chunkList[0]
-    if (chunk === null) {
-      throw new Error('chunk not found')
-    }
-
-    this.parseRiffChunk(chunk, input)
-    this.input = null
+  const chunk = chunkList[0]
+  if (chunk === null) {
+    throw new Error('chunk not found')
   }
 
-  parseRiffChunk(chunk: Chunk, data: Uint8Array) {
+  function parseRiffChunk(chunk: Chunk, data: Uint8Array) {
     const chunkList = getChunkList(chunk, data, "RIFF", "sfbk")
 
     if (chunkList.length !== 3) {
       throw new Error('invalid sfbk structure')
     }
 
-    // INFO-list
-    this.info = parseInfoList(chunkList[0], data)
+    return {
+      // INFO-list
+      info: parseInfoList(chunkList[0], data),
 
-    // sdta-list
-    this.samplingData = parseSdtaList(chunkList[1], data)
+      // sdta-list
+      samplingData: parseSdtaList(chunkList[1], data),
 
-    // pdta-list
-    this.parsePdtaList(chunkList[2], data)
+      // pdta-list
+      ...parsePdtaList(chunkList[2], data)
+    }
   }
 
-  parsePdtaList(chunk: Chunk, data: Uint8Array) {
+  function parsePdtaList(chunk: Chunk, data: Uint8Array) {
     const chunkList = getChunkList(chunk, data, "LIST", "pdta")
 
     // check number of chunks
@@ -69,16 +60,24 @@ export default class {
       throw new Error('invalid pdta chunk')
     }
 
-    this.presetHeader = parsePhdr(chunkList[0], data)
-    this.presetZone = parsePbag(chunkList[1], data)
-    this.presetZoneModulator = parsePmod(chunkList[2], data)
-    this.presetZoneGenerator = parsePgen(chunkList[3], data)
-    this.instrument = parseInst(chunkList[4], data)
-    this.instrumentZone = parseIbag(chunkList[5], data)
-    this.instrumentZoneModulator = parseImod(chunkList[6], data)
-    this.instrumentZoneGenerator = parseIgen(chunkList[7], data)
-    this.sampleHeader = parseShdr(chunkList[8], data)
-    this.sample = loadSample(this.sampleHeader, this.samplingData.offset, data)
+    return {
+      presetHeader: parsePhdr(chunkList[0], data),
+      presetZone: parsePbag(chunkList[1], data),
+      presetZoneModulator: parsePmod(chunkList[2], data),
+      presetZoneGenerator: parsePgen(chunkList[3], data),
+      instrument: parseInst(chunkList[4], data),
+      instrumentZone: parseIbag(chunkList[5], data),
+      instrumentZoneModulator: parseImod(chunkList[6], data),
+      instrumentZoneGenerator: parseIgen(chunkList[7], data),
+      sampleHeader: parseShdr(chunkList[8], data)
+    }
+  }
+
+  const result = parseRiffChunk(chunk, input)
+
+  return {
+    ...result,
+    sample: loadSample(result.sampleHeader, result.samplingData.offset, input)
   }
 }
 

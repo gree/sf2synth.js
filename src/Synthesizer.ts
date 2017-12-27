@@ -1,5 +1,5 @@
 import SynthesizerNote from "./SynthesizerNote"
-import Parser from "./Parser"
+import parse from "./Parser"
 import SoundFont from "./SoundFont"
 import { InstrumentState } from "./SynthesizerNote"
 
@@ -71,8 +71,7 @@ export default class Synthesizer {
   }
 
   refreshInstruments(input: Uint8Array) {
-    const parser = new Parser(input)
-    parser.parse()
+    const parser = parse(input)
     this.soundFont = new SoundFont(parser)
   }
 
