@@ -40,8 +40,16 @@ function renderInstrument(program): Element {
   `)
 }
 
+function objectMap(o, func) {
+  const result = {}
+  Object.keys(o).forEach(key => {
+    result[key] = func(o[key])
+  })
+  return result
+}
+
 function programNamesFromBankSet(bankSet) {
-  return bankSet.map(bank => bank.map(s => s.name))
+  return objectMap(bankSet, bank => objectMap(bank, s => s.name))
 }
 
 function mergeProgramNames(left: {[index: number]: string[]}, right: {[index: number]: string[]}) {

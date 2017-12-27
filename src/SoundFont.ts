@@ -185,7 +185,7 @@ function createAllInstruments(parser: ParseResult): { [index: number]: Bank } {
 
     // select bank
     if (banks[bankNumber] === undefined) {
-      banks[bankNumber] = []
+      banks[bankNumber] = {}
     }
 
     const bank = banks[bankNumber]

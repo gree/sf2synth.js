@@ -67,12 +67,13 @@ WebMidiLink.prototype.loadSoundFont = function(input) {
   var synth
 
   if (!this.synth) {
-    synth = this.synth = new Synthesizer(input)
+    const ctx = new AudioContext()
+    synth = this.synth = new Synthesizer(ctx)
+    synth.init()
+    synth.refreshInstruments(input)
     var view = this.view = new View()
     document.body.appendChild(view.draw(synth))
     this.midiMessageHandler.synth = synth
-    synth.init()
-    synth.start()
     window.addEventListener('message', this.messageHandler, false)
   } else {
     synth = this.synth
