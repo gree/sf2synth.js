@@ -42,7 +42,6 @@ class DummyView implements View {
 }
 
 export default class Synthesizer {
-  input: Uint8Array = null
   bank: number = 0
   bufferSize: number = 1024
   ctx: AudioContext
@@ -71,8 +70,6 @@ export default class Synthesizer {
   }
 
   refreshInstruments(input: Uint8Array) {
-    this.input = input
-
     const parser = new Parser(input)
     parser.parse()
     this.soundFont = new SoundFont(parser)
