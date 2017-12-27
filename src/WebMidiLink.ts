@@ -7,131 +7,131 @@ import MidiMessageHandler from "./MidiMessageHandler.ts"
  */
 const WebMidiLink = function() {
   /** @type {function(ArrayBuffer)} */
-  this.loadCallback;
+  this.loadCallback
   /** @type {Function} */
-  this.messageHandler = this.onmessage.bind(this);
+  this.messageHandler = this.onmessage.bind(this)
 
-  this.midiMessageHandler = new MidiMessageHandler();
+  this.midiMessageHandler = new MidiMessageHandler()
 
   window.addEventListener('DOMContentLoaded', function() {
-    this.ready = true;
-  }.bind(this), false);
-};
+    this.ready = true
+  }.bind(this), false)
+}
 
 WebMidiLink.prototype.setup = function(url) {
   if (!this.ready) {
     window.addEventListener('DOMContentLoaded', function onload() {
-      window.removeEventListener('DOMContentLoaded', onload, false);
-      this.load(url);
-    }.bind(this), false);
+      window.removeEventListener('DOMContentLoaded', onload, false)
+      this.load(url)
+    }.bind(this), false)
   } else {
-    this.load(url);
+    this.load(url)
   }
-};
+}
 
 WebMidiLink.prototype.load = function(url) {
   /** @type {XMLHttpRequest} */
-  var xhr = new XMLHttpRequest();
+  var xhr = new XMLHttpRequest()
 
-  xhr.open('GET', url, true);
-  xhr.responseType = 'arraybuffer';
+  xhr.open('GET', url, true)
+  xhr.responseType = 'arraybuffer'
 
   xhr.addEventListener('load', function(ev) {
     /** @type {XMLHttpRequest} */
-    var xhr = ev.target;
+    var xhr = ev.target
 
-    this.onload(xhr.response);
+    this.onload(xhr.response)
     if (typeof this.loadCallback === 'function') {
-      this.loadCallback(xhr.response);
+      this.loadCallback(xhr.response)
     }
-  }.bind(this), false);
+  }.bind(this), false)
 
-  xhr.send();
-};
+  xhr.send()
+}
 
 /**
  * @param {ArrayBuffer} response
  */
 WebMidiLink.prototype.onload = function(response) {
   /** @type {Uint8Array} */
-  var input = new Uint8Array(response);
+  var input = new Uint8Array(response)
 
-  this.loadSoundFont(input);
-};
+  this.loadSoundFont(input)
+}
 
 /**
  * @param {Uint8Array} input
  */
 WebMidiLink.prototype.loadSoundFont = function(input) {
   /** @type {Synthesizer} */
-  var synth;
+  var synth
 
   if (!this.synth) {
-    synth = this.synth = new Synthesizer(input);
+    synth = this.synth = new Synthesizer(input)
     var view = this.view = new View()
-    document.body.appendChild(view.draw(synth));
-    this.midiMessageHandler.synth = synth;
-    synth.init();
-    synth.start();
-    window.addEventListener('message', this.messageHandler, false);
+    document.body.appendChild(view.draw(synth))
+    this.midiMessageHandler.synth = synth
+    synth.init()
+    synth.start()
+    window.addEventListener('message', this.messageHandler, false)
   } else {
-    synth = this.synth;
-    synth.refreshInstruments(input);
+    synth = this.synth
+    synth.refreshInstruments(input)
   }
 
   // link ready
   if (window.opener) {
-    window.opener.postMessage("link,ready", '*');
+    window.opener.postMessage("link,ready", '*')
   } else if (window.parent !== window) {
-    window.parent.postMessage("link,ready", '*');
+    window.parent.postMessage("link,ready", '*')
   }
-};
+}
 
 /**
  * @param {Event} ev
  */
 WebMidiLink.prototype.onmessage = function(ev) {
-  var msg = ev.data.split(',');
-  var type = msg.shift();
-  var command;
+  var msg = ev.data.split(',')
+  var type = msg.shift()
+  var command
 
   switch (type) {
     case 'midi':
       this.midiMessageHandler.processMidiMessage(
         msg.map(function(hex) {
-          return parseInt(hex, 16);
+          return parseInt(hex, 16)
         })
-      );
-      break;
+      )
+      break
     case 'link':
-      command = msg.shift();
+      command = msg.shift()
       switch (command) {
         case 'reqpatch':
           // TODO: dummy data
           if (window.opener) {
-            window.opener.postMessage("link,patch", '*');
+            window.opener.postMessage("link,patch", '*')
           } else if (window.parent !== window) {
-            window.parent.postMessage("link,patch", '*');
+            window.parent.postMessage("link,patch", '*')
           }
-          break;
+          break
         case 'setpatch':
           // TODO: NOP
-          break;
+          break
         default:
-          console.error('unknown link message:', command);
-          break;
+          console.error('unknown link message:', command)
+          break
       }
-      break;
+      break
     default:
-      console.error('unknown message type');
+      console.error('unknown message type')
   }
-};
+}
 
 /**
  * @param {function(ArrayBuffer)} callback
  */
 WebMidiLink.prototype.setLoadCallback = function(callback) {
-  this.loadCallback = callback;
-};
+  this.loadCallback = callback
+}
 
 export default WebMidiLink
