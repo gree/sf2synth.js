@@ -1,6 +1,6 @@
-import Synthesizer from "./Synthesizer.ts"
-import View from "./View.ts"
-import MidiMessageHandler from "./MidiMessageHandler.ts"
+import Synthesizer from "./Synthesizer"
+import View from "./View"
+import MidiMessageHandler from "./MidiMessageHandler"
 
 /**
  * @constructor
