@@ -248,7 +248,7 @@ function getModGenAmount(generator: {}, enumeratorType: string, opt_default: num
   return generator[enumeratorType] ? generator[enumeratorType].amount : opt_default
 }
 
-function createBagModGen(zone: {}[], indexStart: number, indexEnd: number, zoneModGen: {}): {modgen: {}, modgenInfo: {}[]}  {
+function createBagModGen(indexStart: number, indexEnd: number, zoneModGen: {}): {modgen: {}, modgenInfo: {}[]}  {
   const modgenInfo = []
   const modgen = {
     unknown: [],
@@ -274,7 +274,6 @@ function createBagModGen(zone: {}[], indexStart: number, indexEnd: number, zoneM
 
 function createInstrumentGenerator(zone: InstrumentBag[], index: number, instrumentZoneGenerator: {}[]) {
   const modgen = createBagModGen(
-    zone,
     zone[index].instrumentGeneratorIndex,
     zone[index + 1] ? zone[index + 1].instrumentGeneratorIndex : instrumentZoneGenerator.length,
     instrumentZoneGenerator
@@ -288,7 +287,6 @@ function createInstrumentGenerator(zone: InstrumentBag[], index: number, instrum
 
 function createInstrumentModulator(zone: InstrumentBag[], index: number, instrumentZoneModulator: {}[]) {
   const modgen = createBagModGen(
-    zone,
     zone[index].instrumentModulatorIndex,
     zone[index + 1] ? zone[index + 1].instrumentModulatorIndex : instrumentZoneModulator.length,
     instrumentZoneModulator
@@ -302,7 +300,6 @@ function createInstrumentModulator(zone: InstrumentBag[], index: number, instrum
 
 function createPresetGenerator(zone: PresetBag[], index: number, presetZoneGenerator: {}[]): {generator: Object, generatorInfo: Object[]} {
   const modgen = createBagModGen(
-    zone,
     zone[index].presetGeneratorIndex,
     zone[index + 1] ? zone[index + 1].presetGeneratorIndex : presetZoneGenerator.length,
     presetZoneGenerator
@@ -316,7 +313,6 @@ function createPresetGenerator(zone: PresetBag[], index: number, presetZoneGener
 
 function createPresetModulator(zone: PresetBag[], index: number, presetZoneModulator: {}[]) {
   const modgen = createBagModGen(
-    zone,
     zone[index].presetModulatorIndex,
     zone[index + 1] ? zone[index + 1].presetModulatorIndex : presetZoneModulator.length,
     presetZoneModulator
