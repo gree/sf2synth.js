@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
     "lib": ["es2016", "dom"],
-    "sourceMap": true
+    "sourceMap": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "strictNullChecks": true
   }
 }
