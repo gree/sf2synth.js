@@ -1,14 +1,13 @@
-import Synthesizer from "./Synthesizer.ts"
-import ProgramNames from "./ProgramNames.ts"
-import { DOMElement } from "react";
+import Synthesizer from "./Synthesizer"
+import ProgramNames from "./ProgramNames"
 
-function render(str) {
+function render(str: string): Element {
   const wrapper = document.createElement("div");
   wrapper.innerHTML = str.replace(/^\s+/, "");
-  return wrapper.firstElementChild;
+  return wrapper.firstElementChild!;
 }
 
-function renderKeys() {
+function renderKeys(): string {
   let html = "";
   for (let i = 0; i < 128; i++) {
     const n = i % 12;
@@ -18,7 +17,7 @@ function renderKeys() {
   return html
 }
 
-function renderProgramOptions(programNames, bank) {
+function renderProgramOptions(programNames: { [index: number]: string[] }, bank: number): string {
   let html = ""
   const names = programNames[bank]
   for (let i in names) {
@@ -28,7 +27,7 @@ function renderProgramOptions(programNames, bank) {
   return `<select>${html}</select>`;
 }
 
-function renderInstrument(program) {
+function renderInstrument(program): Element {
   return render(`
     <div class="instrument">
       <div class="program">${program}</div>
@@ -65,7 +64,7 @@ function mergeProgramNames(left: {[index: number]: string[]}, right: {[index: nu
 }
 
 export default class View {
-  private element: Element
+  private element: Element|null
   private drag: boolean = false
 
   draw(synth: Synthesizer): Element {
@@ -124,75 +123,79 @@ export default class View {
       return;
     }
 
-    this.element.parentNode.removeChild(this.element);
+    this.element.parentNode!.removeChild(this.element);
     this.element = null;
   }
 
-  getInstrumentElement(channel) {
+  getInstrumentElement(channel: number): Element|null {
+    if (!this.element) {
+      return null
+    }
     return this.element.querySelectorAll(".instrument")[channel]
   }
 
-  getKeyElement(channel, key) {
-    return this.getInstrumentElement(channel).querySelectorAll(".key")[key]
+  getKeyElement(channel: number, key: number): Element|null {
+    const elem = this.getInstrumentElement(channel)
+    if (!elem) {
+      return null
+    }
+    return elem.querySelectorAll(".key")[key]
   }
 
-  noteOn(channel, key) {
-    if (!this.element) {
-      return;
+  findInstrumentElement(channel: number, query: string): Element|null {
+    const elem = this.getInstrumentElement(channel)
+    if (!elem) {
+      return null
     }
-
-    this.getKeyElement(channel, key).classList.add('note-on');
+    return elem.querySelector(query)
   }
 
-  noteOff(channel, key) {
-    if (!this.element) {
-      return;
+  noteOn(channel: number, key: number) {
+    const element = this.getKeyElement(channel, key)
+    if (element) {
+      element.classList.add('note-on');
     }
-
-    this.getKeyElement(channel, key).classList.remove('note-on');
   }
 
-  programChange(channel, instrument) {
-    if (!this.element) {
-      return;
+  noteOff(channel: number, key: number) {
+    const element = this.getKeyElement(channel, key)
+    if (element) {
+      element.classList.remove('note-on');
     }
+  }
 
-    const select: HTMLSelectElement = this.getInstrumentElement(channel).querySelector(".program select")
-
+  programChange(channel: number, instrument) {
+    const select = this.findInstrumentElement(channel, ".program select") as HTMLSelectElement|undefined
     if (select) {
       select.value = instrument;
     }
   }
 
-  volumeChange(channel, volume) {
-    if (!this.element) {
-      return;
+  volumeChange(channel: number, volume) {
+    const element = this.findInstrumentElement(channel, ".volume")
+    if (element) {
+      element.textContent = volume;
     }
-
-    this.getInstrumentElement(channel).querySelector(".volume").textContent = volume;
   }
 
-  panpotChange(channel, panpot) {
-    if (!this.element) {
-      return;
+  panpotChange(channel: number, panpot: string) {
+    const element = this.findInstrumentElement(channel, ".panpot")
+    if (element) {
+      element.textContent = panpot;
     }
-
-    this.getInstrumentElement(channel).querySelector(".panpot").textContent = panpot;
   }
 
-  pitchBend(channel, calculatedPitch) {
-    if (!this.element) {
-      return;
+  pitchBend(channel: number, calculatedPitch: string) {
+    const element = this.findInstrumentElement(channel, ".pitchBend")
+    if (element) {
+      element.textContent = calculatedPitch;
     }
-
-    this.getInstrumentElement(channel).querySelector(".pitchBend").textContent = calculatedPitch;
   }
 
-  pitchBendSensitivity(channel, sensitivity) {
-    if (!this.element) {
-      return;
+  pitchBendSensitivity(channel: number, sensitivity: string) {
+    const element = this.findInstrumentElement(channel, ".pitchBendSensitivity")
+    if (element) {
+      element.textContent = sensitivity;
     }
-
-    this.getInstrumentElement(channel).querySelector(".pitchBendSensitivity").textContent = sensitivity;
   }
 }
