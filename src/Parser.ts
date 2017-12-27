@@ -140,15 +140,15 @@ function parseChunk<T>(chunk: Chunk, data: Uint8Array, type: string, factory: (S
   return result
 }
 
-const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", stream => PresetHeader.parse(stream))
+const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", stream => PresetHeader.parse(stream)).filter(p => p.presetName !== "EOP")
 const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", stream => PresetBag.parse(stream))
-const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", stream => Instrument.parse(stream))
+const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", stream => Instrument.parse(stream)).filter(i => i.instrumentName !== "EOI")
 const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", stream => InstrumentBag.parse(stream))
 const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", stream => ModulatorList.parse(stream))
 const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", stream => ModulatorList.parse(stream))
 const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", stream => GeneratorList.parse(stream))
 const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", stream => GeneratorList.parse(stream))
-const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => Sample.parse(stream))
+const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => Sample.parse(stream)).filter(s => s.sampleName !== "EOS")
 
 function adjustSampleData(sample, sampleRate) {
   let multiply = 1
