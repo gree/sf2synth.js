@@ -1,6 +1,7 @@
-import SynthesizerNote from "./SynthesizerNote.ts"
-import Parser from "./Parser.ts"
-import SoundFont from "./SoundFont.ts"
+import SynthesizerNote from "./SynthesizerNote"
+import Parser from "./Parser"
+import SoundFont from "./SoundFont"
+import { InstrumentState } from "./SynthesizerNote"
 
 const BASE_VOLUME = 0.4
 
@@ -91,9 +92,9 @@ export default class Synthesizer {
     const bankNumber = channelNumber === 9 ? 128 : this.bank
     const channel = this.channels[channelNumber]
 
-    const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity)
+    const noteInfo = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity)
 
-    if (!instrumentKey) {
+    if (!noteInfo) {
       return
     }
 
@@ -101,23 +102,25 @@ export default class Synthesizer {
     panpot /= panpot < 0 ? 64 : 63
 
     // create note information
-    instrumentKey['channel'] = channelNumber
-    instrumentKey['key'] = key
-    instrumentKey['velocity'] = velocity
-    instrumentKey['panpot'] = panpot
-    instrumentKey['volume'] = channel.volume / 127
-    instrumentKey['pitchBend'] = channel.pitchBend - 0x2000
-    instrumentKey['pitchBendSensitivity'] = channel.pitchBendSensitivity
+    const instrumentKey: InstrumentState = {
+      channel: channelNumber,
+      key: key,
+      velocity: velocity,
+      panpot: panpot,
+      volume: channel.volume / 127,
+      pitchBend: channel.pitchBend - 0x2000,
+      pitchBendSensitivity: channel.pitchBendSensitivity
+    }
 
     // note on
-    const note = new SynthesizerNote(this.ctx, this.gainMaster, instrumentKey)
+    const note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey)
     note.noteOn()
     channel.currentNoteOn.push(note)
 
     this.view.noteOn(channelNumber, key)
   }
 
-  noteOff(channelNumber: number, key: number, velocity: number) {
+  noteOff(channelNumber: number, key: number, _velocity: number) {
     if (!this.soundFont) {
       return
     }
