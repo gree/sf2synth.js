@@ -171,9 +171,8 @@ function adjustSampleData(sample, sampleRate) {
   }
 }
 
-function loadSample(sampleHeader, samplingDataOffset, data): Int16Array[] {
-  const samples: Int16Array[] = []
-  for (let header of sampleHeader) {
+function loadSample(sampleHeader: Sample[], samplingDataOffset: number, data: Uint8Array): Int16Array[] {
+  return sampleHeader.map(header => {
     let sample = new Int16Array(new Uint8Array(data.subarray(
       samplingDataOffset + header.start * 2,
       samplingDataOffset + header.end   * 2
@@ -185,7 +184,6 @@ function loadSample(sampleHeader, samplingDataOffset, data): Int16Array[] {
       header.startLoop *= adjust.multiply
       header.endLoop *= adjust.multiply
     }
-    samples.push(sample)
-  }
-  return samples
+    return sample
+  })
 }
