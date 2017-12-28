@@ -256,13 +256,13 @@ function createNoteInfo(parser: ParseResult, targetGenerator: ModGen, baseGenera
       getModGenAmount(generator, 'endAddrsOffset'),
     loopStart: (
       //(sampleHeader.startLoop - sampleHeader.start) +
-      (sampleHeader.startLoop) +
+      (sampleHeader.loopStart) +
       getModGenAmount(generator, 'startloopAddrsCoarseOffset') * 32768 +
       getModGenAmount(generator, 'startloopAddrsOffset')
     ),
     loopEnd: (
       //(sampleHeader.endLoop - sampleHeader.start) +
-      (sampleHeader.endLoop) +
+      (sampleHeader.loopEnd) +
       getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
       getModGenAmount(generator, 'endloopAddrsOffset')
     ),

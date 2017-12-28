@@ -181,8 +181,8 @@ export class SampleHeader {
   sampleName: string
   start: number
   end: number
-  startLoop: number
-  endLoop: number
+  loopStart: number
+  loopEnd: number
   sampleRate: number
   originalPitch: number
   pitchCorrection: number
@@ -195,16 +195,16 @@ export class SampleHeader {
     s.sampleName = stream.readString(20)
     s.start = stream.readDWORD()
     s.end = stream.readDWORD()
-    s.startLoop = stream.readDWORD()
-    s.endLoop = stream.readDWORD()
+    s.loopStart = stream.readDWORD()
+    s.loopEnd = stream.readDWORD()
     s.sampleRate = stream.readDWORD()
     s.originalPitch = stream.readByte()
     s.pitchCorrection = stream.readInt8()
     s.sampleLink = stream.readWORD()
     s.sampleType = stream.readWORD()
 
-    s.startLoop -= s.start
-    s.endLoop -= s.start
+    s.loopStart -= s.start
+    s.loopEnd -= s.start
 
     return s
   }

@@ -170,8 +170,8 @@ function loadSample(sampleHeader: SampleHeader[], samplingDataOffset: number, da
       const adjust = adjustSampleData(sample, header.sampleRate)
       sample = adjust.sample
       header.sampleRate *= adjust.multiply
-      header.startLoop *= adjust.multiply
-      header.endLoop *= adjust.multiply
+      header.loopStart *= adjust.multiply
+      header.loopEnd *= adjust.multiply
     }
     return sample
   })
