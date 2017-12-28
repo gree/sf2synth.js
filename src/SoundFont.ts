@@ -1,5 +1,5 @@
 import { ParseResult } from "./Parser"
-import { InstrumentBag, PresetBag, ModulatorList, PresetHeader, RangeValue, AmountValue } from "./Structs"
+import { InstrumentBag, PresetBag, ModulatorList, PresetHeader, RangeValue } from "./Structs"
 
 /**
  * Parser で読み込んだサウンドフォントのデータを
@@ -8,7 +8,7 @@ import { InstrumentBag, PresetBag, ModulatorList, PresetHeader, RangeValue, Amou
 export default class SoundFont {
   bankSet: { [index: number]: Bank }
 
-  constructor(parser) {
+  constructor(parser: ParseResult) {
     this.bankSet = createAllInstruments(parser)
   }
 
@@ -155,7 +155,7 @@ function createAllInstruments(parser: ParseResult): { [index: number]: Bank } {
         if ((generator as any).instrument === undefined) {
           return null
         }
-        const instrumentNumber = (generator as any).instrument.amount
+        const instrumentNumber = (generator as any).instrument
         const instrument = instruments[instrumentNumber]
 
         // use the first generator in the zone as the default value
@@ -285,11 +285,11 @@ function createNoteInfo(parser: ParseResult, targetGenerator: ModGen, baseGenera
 }
 
 function getModGenAmount(generator: ModGen, enumeratorType: string, opt_default: number = 0): number {
-  return generator[enumeratorType] ? generator[enumeratorType].amount : opt_default
+  return generator[enumeratorType] !== undefined ? generator[enumeratorType] : opt_default
 }
 
 interface ModGen {
-  unknown: (AmountValue|RangeValue)[],
+  unknown: (number|RangeValue)[],
   keyRange: RangeValue
   // GeneratorEnumeratorTable にあるものが入る
 }

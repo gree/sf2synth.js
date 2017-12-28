@@ -77,20 +77,22 @@ export class PresetBag {
   }
 }
 
-export interface AmountValue {
-  code?: number
-  amount: number
-}
-
-export interface RangeValue {
+export class RangeValue {
   lo: number
   hi: number
+
+  static parse(stream: Stream) {
+    const r = new RangeValue()
+    r.lo = stream.readByte()
+    r.hi = stream.readByte()
+    return r
+  }
 }
 
 export class ModulatorList {
   sourceOper: number
   destinationOper: number
-  value: AmountValue|RangeValue
+  value: number|RangeValue
   amountSourceOper: number
   transOper: number
   type: string
@@ -105,30 +107,16 @@ export class ModulatorList {
     const key = GeneratorEnumeratorTable[code]
     t.type = key!
 
-    if (key === void 0) {
-      // Amount
-      t.value = {
-        code: code,
-        amount: stream.readInt16()
-      }
-    } else {
-      // Amount
-      switch (key) {
-        case 'keyRange': /* FALLTHROUGH */
-        case 'velRange': /* FALLTHROUGH */
-        case 'keynum': /* FALLTHROUGH */
-        case 'velocity':
-          t.value = {
-            lo: stream.readByte(),
-            hi: stream.readByte()
-          }
-          break
-        default:
-          t.value = {
-            amount: stream.readInt16()
-          }
-          break
-      }
+    switch (key) {
+      case 'keyRange': /* FALLTHROUGH */
+      case 'velRange': /* FALLTHROUGH */
+      case 'keynum': /* FALLTHROUGH */
+      case 'velocity':
+        t.value = RangeValue.parse(stream)
+        break
+      default:
+        t.value = stream.readInt16()
+        break
     }
     
     t.amountSourceOper = stream.readWORD()
@@ -140,7 +128,7 @@ export class ModulatorList {
 
 export class GeneratorList {
   type: string
-  value: AmountValue|RangeValue
+  value: number|RangeValue
 
   static parse(stream: Stream) {
     const t = new ModulatorList()
@@ -149,28 +137,16 @@ export class GeneratorList {
     const key = GeneratorEnumeratorTable[code]
     t.type = key!
 
-    if (key === void 0) {
-      t.value = {
-        code,
-        amount: stream.readInt16()
-      }
-    } else {
-      switch (key) {
-        case 'keynum': /* FALLTHROUGH */
-        case 'keyRange': /* FALLTHROUGH */
-        case 'velRange': /* FALLTHROUGH */
-        case 'velocity':
-          t.value = {
-            lo: stream.readByte(),
-            hi: stream.readByte()
-          }
-          break
-        default:
-          t.value = {
-            amount: stream.readInt16()
-          }
-          break
-      }
+    switch (key) {
+      case 'keynum': /* FALLTHROUGH */
+      case 'keyRange': /* FALLTHROUGH */
+      case 'velRange': /* FALLTHROUGH */
+      case 'velocity':
+        t.value = RangeValue.parse(stream)
+        break
+      default:
+        t.value = stream.readInt16()
+        break
     }
 
     return t
