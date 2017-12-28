@@ -164,7 +164,7 @@ export class InstrumentBag {
   }
 }
 
-export class Sample {
+export class SampleHeader {
   sampleName: string
   start: number
   end: number
@@ -177,7 +177,7 @@ export class Sample {
   sampleType: number
 
   static parse(stream: Stream) {
-    const s = new Sample()
+    const s = new SampleHeader()
 
     s.sampleName = stream.readString(20)
     s.start = stream.readDWORD()

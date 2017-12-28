@@ -1,5 +1,5 @@
 import { parseRiff, Chunk, Options as RiffParserOptions } from "./RiffParser"
-import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs"
+import { PresetHeader, SampleHeader, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs"
 import { readString } from "./readString"
 import Stream from "./Stream"
 import { InfoNameTable } from "./Constants"
@@ -13,7 +13,7 @@ export interface ParseResult {
   instrumentZone: InstrumentBag[]
   instrumentZoneModulator: ModulatorList[]
   instrumentZoneGenerator: ModulatorList[]
-  sampleHeader: Sample[]
+  sampleHeader: SampleHeader[]
   sample: Int16Array[]
   samplingData: Chunk
   info: { [index: string]: string }
@@ -147,7 +147,7 @@ const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", stream => Mod
 const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", stream => ModulatorList.parse(stream))
 const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", stream => GeneratorList.parse(stream))
 const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", stream => GeneratorList.parse(stream))
-const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => Sample.parse(stream)).filter(s => s.sampleName !== "EOS")
+const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => SampleHeader.parse(stream)).filter(s => s.sampleName !== "EOS")
 
 function adjustSampleData(sample, sampleRate) {
   let multiply = 1
@@ -170,7 +170,7 @@ function adjustSampleData(sample, sampleRate) {
   }
 }
 
-function loadSample(sampleHeader: Sample[], samplingDataOffset: number, data: Uint8Array): Int16Array[] {
+function loadSample(sampleHeader: SampleHeader[], samplingDataOffset: number, data: Uint8Array): Int16Array[] {
   return sampleHeader.map(header => {
     let sample = new Int16Array(new Uint8Array(data.subarray(
       samplingDataOffset + header.start * 2,
