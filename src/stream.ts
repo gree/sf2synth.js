@@ -20,13 +20,22 @@ export default class Stream {
     return this.data[this.ip++] | (this.data[this.ip++] << 8)
   }
 
-  readDWORD(): number {
-    return (
-      this.data[this.ip++] | 
-      (this.data[this.ip++] << 8) | 
-      (this.data[this.ip++] << 16) | 
-      (this.data[this.ip++] << 24)
-    ) >>> 0
+  readDWORD(bigEndian: boolean = false): number {
+    if (bigEndian) {
+      return (
+        this.data[this.ip++] << 24| 
+        (this.data[this.ip++] << 16) | 
+        (this.data[this.ip++] << 8) | 
+        (this.data[this.ip++])
+      ) >>> 0
+    } else {
+      return (
+        this.data[this.ip++] | 
+        (this.data[this.ip++] << 8) | 
+        (this.data[this.ip++] << 16) | 
+        (this.data[this.ip++] << 24)
+      ) >>> 0
+    }
   }
 
   readByte() {

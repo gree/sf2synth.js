@@ -1,2 +1,4 @@
-import Parser from "../src/sf2.ts"
-export default Parser
+import Parser from "../src/Parser.ts"
+export {
+  Parser
+}

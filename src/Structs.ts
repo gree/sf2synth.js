@@ -1,4 +1,5 @@
-import { GeneratorEnumeratorTable } from "./constants.ts"
+import { GeneratorEnumeratorTable } from "./Constants"
+import Stream from "./Stream"
 
 export class VersionTag {
   major: number
@@ -14,7 +15,7 @@ export class PresetHeader {
   genre: number
   morphology: number
 
-  static parse(stream) {
+  static parse(stream: Stream) {
     const p = new PresetHeader()
     p.presetName = stream.readString(20)
     p.preset = stream.readWORD()
@@ -31,7 +32,7 @@ export class PresetBag {
   presetGeneratorIndex: number
   presetModulatorIndex: number
 
-  static parse(stream) {
+  static parse(stream: Stream) {
     const p = new PresetBag()
     p.presetGeneratorIndex = stream.readWORD()
     p.presetModulatorIndex = stream.readWORD()
@@ -39,15 +40,25 @@ export class PresetBag {
   }
 }
 
+export interface AmountValue {
+  code?: number
+  amount: number
+}
+
+export interface RangeValue {
+  lo: number
+  hi: number
+}
+
 export class ModulatorList {
   sourceOper: number
-  destinationOper: Generator
-  value: Object
+  destinationOper: number
+  value: AmountValue|RangeValue
   amountSourceOper: number
-  transOper: Generator
+  transOper: number
   type: string
 
-  static parse(stream) {
+  static parse(stream: Stream) {
     const t = new ModulatorList()
 
     t.sourceOper = stream.readWORD()
@@ -55,7 +66,7 @@ export class ModulatorList {
     t.destinationOper = code
     
     const key = GeneratorEnumeratorTable[code]
-    t.type = key
+    t.type = key!
 
     if (key === void 0) {
       // Amount
@@ -92,14 +103,14 @@ export class ModulatorList {
 
 export class GeneratorList {
   type: string
-  value: Object
+  value: AmountValue|RangeValue
 
-  static parse(stream) {
+  static parse(stream: Stream) {
     const t = new ModulatorList()
     
     const code = stream.readWORD()
     const key = GeneratorEnumeratorTable[code]
-    t.type = key
+    t.type = key!
 
     if (key === void 0) {
       t.value = {
@@ -133,7 +144,7 @@ export class Instrument {
   instrumentName: string
   instrumentBagIndex: number
   
-  static parse(stream) {
+  static parse(stream: Stream) {
     const t = new Instrument()
     t.instrumentName = stream.readString(20)
     t.instrumentBagIndex = stream.readWORD()
@@ -145,7 +156,7 @@ export class InstrumentBag {
   instrumentGeneratorIndex: number
   instrumentModulatorIndex: number
   
-  static parse(stream) {
+  static parse(stream: Stream) {
     const t = new InstrumentBag()
     t.instrumentGeneratorIndex = stream.readWORD()
     t.instrumentModulatorIndex = stream.readWORD()
@@ -165,7 +176,7 @@ export class Sample {
   sampleLink: number
   sampleType: number
 
-  static parse(stream) {
+  static parse(stream: Stream) {
     const s = new Sample()
 
     s.sampleName = stream.readString(20)
@@ -186,9 +197,6 @@ export class Sample {
   }
 }
 
-/**
- * @enum {number}
- */
 export const SampleLink = {
   monoSample: 1,
   rightSample: 2,

@@ -1,4 +1,4 @@
-import Synthesizer from "./sound_font_synth"
+import Synthesizer from "./Synthesizer"
 
 export default class MidiMessageHandler {
   private RpnMsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
