@@ -9,7 +9,6 @@ module.exports = {
   output: {
     path: path.join(__dirname, "bin"),
     filename: "sf2.[name].js",
-    library: "[name]",
     libraryTarget: "umd"
   },
   resolve: {

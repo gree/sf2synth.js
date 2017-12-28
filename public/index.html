@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <script src="./bin/sf2.synth.js"></script>
+  <script>
+    const url = './fixture/TestSoundFont.sf2'
+    const wml = new WebMidiLink()
+    wml.setLoadCallback(function(arraybuffer) {
+      // ロード完了時の処理
+    })
+    wml.setup(url)
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="synth"></div>
+</body>
+</html>

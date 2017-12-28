@@ -16,7 +16,7 @@ export interface ParseResult {
   sampleHeader: Sample[]
   sample: Int16Array[]
   samplingData: Chunk
-  info: {}
+  info: { [index: string]: string }
 }
 
 export default function parse(input: Uint8Array, option: RiffParserOptions = {}): ParseResult {
@@ -99,8 +99,8 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
   return parseRiff(data, stream.ip, chunk.size - 4)
 }
 
-function parseInfoList(chunk: Chunk, data: Uint8Array): {} {
-  const info = {}
+function parseInfoList(chunk: Chunk, data: Uint8Array) {
+  const info: { [index: string]: string } = {}
   const chunkList = getChunkList(chunk, data, "LIST", "INFO")
 
   for (let p of chunkList) {

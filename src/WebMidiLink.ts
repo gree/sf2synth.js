@@ -59,8 +59,9 @@ export default class WebMidiLink {
       synth = this.synth = new Synthesizer(ctx)
       synth.init()
       synth.refreshInstruments(input)
+      synth.connect(ctx.destination)
       const view = this.view = new View()
-      document.body.appendChild(view.draw(synth))
+      document.body.querySelector(".synth")!.appendChild(view.draw(synth))
       this.midiMessageHandler.synth = synth
       window.addEventListener('message', this.onmessage.bind(this), false)
     } else {

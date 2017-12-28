@@ -197,9 +197,6 @@ export class Sample {
   }
 }
 
-/**
- * @enum {number}
- */
 export const SampleLink = {
   monoSample: 1,
   rightSample: 2,
