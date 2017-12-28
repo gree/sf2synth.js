@@ -81,11 +81,16 @@ export class RangeValue {
   lo: number
   hi: number
 
+  constructor(lo: number, hi: number) {
+    this.lo = lo
+    this.hi = hi
+  }
+
   static parse(stream: Stream) {
-    const r = new RangeValue()
-    r.lo = stream.readByte()
-    r.hi = stream.readByte()
-    return r
+    return new RangeValue(
+      stream.readByte(), 
+      stream.readByte()
+    )
   }
 }
 

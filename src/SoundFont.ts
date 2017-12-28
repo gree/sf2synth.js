@@ -1,44 +1,60 @@
 import { ParseResult } from "./Parser"
-import { InstrumentBag, PresetBag, ModulatorList, PresetHeader, RangeValue } from "./Structs"
+import { RangeValue, GeneratorList } from "./Structs"
 
 /**
  * Parser で読み込んだサウンドフォントのデータを
  * Synthesizer から利用しやすい形にするクラス
  */
 export default class SoundFont {
-  bankSet: { [index: number]: Bank }
+  private parsed: ParseResult
 
-  constructor(parser: ParseResult) {
-    this.bankSet = createAllInstruments(parser)
+  constructor(parsed: ParseResult) {
+    this.parsed = parsed
   }
 
-  getInstrumentKey(bankNumber, instrumentNumber, key, velocity = 100) {
-    const bank = this.bankSet[bankNumber]
-    if (!bank) {
-      console.warn(
-        "bank not found: bank=%s instrument=%s",
-        bankNumber,
-        instrumentNumber
-      )
+  getInstrumentKey(bankNumber, instrumentNumber, key, velocity = 100): NoteInfo|null {
+    const presetHeader = this.parsed.presetHeaders.find(p => p.preset === instrumentNumber && p.bank === bankNumber)
+    
+    if (!presetHeader) {
+      console.warn("preset not found: bank=%s instrument=%s", bankNumber, instrumentNumber)
       return null
     }
 
-    const instrument = bank[instrumentNumber]
-    if (!instrument) {
-      // TODO
-      console.warn(
-        "instrument not found: bank=%s instrument=%s",
-        bankNumber,
-        instrumentNumber
-      )
-      return null
+    let presetGenerators: GeneratorList[]
+    const presetBag = this.parsed.presetZone[presetHeader.presetBagIndex]
+
+    const nextPresetHeaderIndex = this.parsed.presetHeaders.indexOf(presetHeader) + 1
+    if (nextPresetHeaderIndex < this.parsed.presetHeaders.length) {
+      // 次の preset までのすべての generator を取得する
+      const nextPresetHeader = this.parsed.presetHeaders[nextPresetHeaderIndex]
+      const nextPresetBag = this.parsed.presetZone[nextPresetHeader.presetBagIndex]
+      presetGenerators = this.parsed.presetGenerators.slice(presetBag.presetGeneratorIndex, nextPresetBag.presetGeneratorIndex)
+    } else {
+      // 最後の preset だった場合は一つだけ使う
+      presetGenerators = [this.parsed.presetGenerators[presetBag.presetGeneratorIndex]]
     }
 
-    const instrumentKey = instrument.notes.filter(i => {
-      let isInKeyRange = false
-      if (i.keyRange) {
-        isInKeyRange = key >= i.keyRange.lo && key <= i.keyRange.hi
-      }
+    // Last Preset Generator must be instrument
+    const lastPresetGenertor = presetGenerators[presetGenerators.length - 1]
+    if (lastPresetGenertor.type !== "instrument" || Number(lastPresetGenertor.value) === NaN) {
+      throw new Error("invalid preset generator: expect instrument")
+    }
+    const instrumentID = lastPresetGenertor.value as number
+    const instrument = this.parsed.instruments[instrumentID]
+    const nextInstrument = this.parsed.instruments[instrumentID + 1]
+
+    // instrument がもつ全ての Generator を使いやすい形式にまとめる
+    const generatorValuesList = arrayRange(instrument.instrumentBagIndex, nextInstrument.instrumentBagIndex)
+      .map(i => {
+        const instrumentBag = this.parsed.instrumentZone[i]
+        const nextInstrumentBag = this.parsed.instrumentZone[i + 1]
+        const generators = this.parsed.instrumentGenerators.slice(instrumentBag.instrumentGeneratorIndex, nextInstrumentBag.instrumentGeneratorIndex)
+        return getInstrumentGeneratorValues(generators)
+      })
+
+    // keyRange と velRange がマッチしている Generator を探す
+    const generatorValues = generatorValuesList.find(i => {
+      let isInKeyRange = key >= i.keyRange.lo && key <= i.keyRange.hi
 
       let isInVelRange = true
       if (i.velRange) {
@@ -46,326 +62,164 @@ export default class SoundFont {
       }
 
       return isInKeyRange && isInVelRange
-    })[0]
-
-    if (!instrumentKey) {
-      // TODO
-      console.warn(
-        "instrument not found: bank=%s instrument=%s key=%s",
-        bankNumber,
-        instrumentNumber,
-        key
-      )
+    })
+    
+    if (!generatorValues) {
+      console.warn("instrument not found: bank=%s instrument=%s", bankNumber, instrumentNumber)
       return null
     }
 
-    return instrumentKey
-  }
-}
+    const gen = generatorValues
 
-interface ZoneInfo {
-  generator: ModGen
-  generatorSequence: ModulatorList[]
-  modulator: ModGen,
-  modulatorSequence: ModulatorList[]
-}
-
-function createInstrument({ instruments, instrumentZone, instrumentGenerators, instrumentModulators }: ParseResult) {
-  const zone = instrumentZone
-  const output: { name: string, info: ZoneInfo[] }[] = []
-
-  // instrument -> instrument bag -> generator / modulator
-  for (let i = 0; i < instruments.length; ++i) {
-    const bagIndex = instruments[i].instrumentBagIndex
-    const bagIndexEnd = instruments[i + 1] ? instruments[i + 1].instrumentBagIndex : zone.length
-    const zoneInfo: ZoneInfo[] = []
-
-    // instrument bag
-    for (let j = bagIndex; j < bagIndexEnd; ++j) {
-      const instrumentGenerator = createInstrumentGenerator(zone, j, instrumentGenerators)
-      const instrumentModulator = createInstrumentModulator(zone, j, instrumentModulators)
-
-      zoneInfo.push({
-        generator: instrumentGenerator.generator,
-        generatorSequence: instrumentGenerator.generatorInfo,
-        modulator: instrumentModulator.modulator,
-        modulatorSequence: instrumentModulator.modulatorInfo
-      })
-    }
-
-    output.push({
-      name: instruments[i].instrumentName,
-      info: zoneInfo
-    })
-  }
-
-  return output
-}
-
-interface PresetInfo {
-  presetGenerator: { generator: ModGen, generatorInfo: ModulatorList[] }
-  presetModulator: { modulator: ModGen, modulatorInfo: ModulatorList[] }
-}
-
-function createPreset({ presetHeaders, presetZone, presetGenerators, presetModulators }: ParseResult): {
-  info: PresetInfo[], 
-  header: PresetHeader
-}[] {
-  // preset -> preset bag -> generator / modulator
-  return presetHeaders.map((preset, i) => {
-    const nextPreset = presetHeaders[i + 1]
-    const bagIndex = preset.presetBagIndex
-    const bagIndexEnd = nextPreset ? nextPreset.presetBagIndex : presetZone.length
-    const zoneInfo: PresetInfo[] = []
-
-    // preset bag
-    for (let j = bagIndex, jl = bagIndexEnd; j < jl; ++j) {
-      zoneInfo.push({
-        presetGenerator: createPresetGenerator(presetZone, j, presetGenerators),
-        presetModulator: createPresetModulator(presetZone, j, presetModulators)
-      })
-    }
+    const sampleHeader = this.parsed.sampleHeaders[gen.sampleID]
+    const tune = gen.coarseTune + gen.fineTune / 100
+    const basePitch = tune + (sampleHeader.pitchCorrection / 100) - (gen.overridingRootKey || sampleHeader.originalPitch)
+    const scaleTuning = gen.scaleTuning / 100
 
     return {
-      info: zoneInfo,
-      header: preset
-    }
-  })
-}
-
-interface Bank {
-  [index: number]: {
-    notes: NoteInfo[]
-    name: string
-  }
-}
-
-function createAllInstruments(parser: ParseResult): { [index: number]: Bank } {
-  const presets = createPreset(parser)
-  const instruments = createInstrument(parser)
-  const banks: { [index: number]: Bank } = {}
-
-  for (let preset of presets) {
-    const bankNumber = preset.header.bank
-    const presetNumber = preset.header.preset
-
-    const notes: NoteInfo[] = preset.info
-      .map(info => info.presetGenerator.generator)
-      .map(generator => {
-        if ((generator as any).instrument === undefined) {
-          return null
-        }
-        const instrumentNumber = (generator as any).instrument
-        const instrument = instruments[instrumentNumber]
-
-        // use the first generator in the zone as the default value
-        let baseGenerator: ModGen
-        if (instrument.info[0].generator) {
-          const generator = instrument.info[0].generator
-          if ((generator as any).sampleID === undefined && generator.keyRange.lo === 0 && generator.keyRange.hi === 127) {
-            baseGenerator = generator
-          }
-        }
-        return instrument.info
-          .map(info => createNoteInfo(parser, info.generator, baseGenerator))
-          .filter(x => x) as NoteInfo[] // remove null
-      })
-      .filter(x => x) // remove null
-      .reduce((a, b) => a!.concat(b!), []) as NoteInfo[] // flatten
-
-    // select bank
-    if (banks[bankNumber] === undefined) {
-      banks[bankNumber] = {}
-    }
-
-    const bank = banks[bankNumber]
-    bank[presetNumber] = {
-      notes,
-      name: preset.header.presetName
+      sample: this.parsed.samples[gen.sampleID],
+      sampleRate: sampleHeader.sampleRate,
+      sampleName: sampleHeader.sampleName,
+      scaleTuning,
+      playbackRate: (key) => Math.pow(Math.pow(2, 1 / 12), (key + basePitch) * scaleTuning),
+      keyRange: gen.keyRange,
+      velRange: gen.velRange,
+      volAttack: Math.pow(2, gen.volAttack / 1200),
+      volDecay: Math.pow(2, gen.volDecay / 1200),
+      volSustain: gen.volSustain / 1000,
+      volRelease: Math.pow(2, gen.volRelease / 1200),
+      modAttack: Math.pow(2, gen.modAttack / 1200),
+      modDecay: Math.pow(2, gen.modDecay / 1200),
+      modSustain: gen.modSustain / 1000,
+      modRelease: Math.pow(2, gen.modRelease / 1200),
+      modEnvToPitch: gen.modEnvToPitch / 100,
+      modEnvToFilterFc: gen.modEnvToFilterFc,
+      initialFilterQ: gen.initialFilterQ,
+      initialFilterFc: gen.initialFilterFc,
+      freqVibLFO: gen.freqVibLFO ? Math.pow(2, gen.freqVibLFO / 1200) * 8.176 : undefined,
+      start: gen.startAddrsCoarseOffset * 32768 + gen.startAddrsOffset,
+      end: gen.endAddrsCoarseOffset * 32768 + gen.endAddrsOffset,
+      loopStart: (
+        sampleHeader.loopStart +
+        gen.startloopAddrsCoarseOffset * 32768 +
+        gen.startloopAddrsOffset
+      ),
+      loopEnd: (
+        sampleHeader.loopEnd +
+        gen.endloopAddrsCoarseOffset * 32768 +
+        gen.endloopAddrsOffset
+      ),
     }
   }
 
-  return banks
+  // presetNames[bankNumber][presetNumber] = presetName
+  getPresetNames() {
+    const bank: {[index: number]: {[index: number]: string}} = {}
+    this.parsed.presetHeaders.forEach(preset => {
+      if (!bank[preset.bank]) {
+        bank[preset.bank] = {}
+      }
+      bank[preset.bank][preset.preset] = preset.presetName
+    })
+    return bank
+  }
+}
+
+function arrayRange(start, end) {
+  return Array.from({length: end - start}, (_, k) => k + start);
+}
+
+// ひとつの instrument に対応する Generator の配列から使いやすくしたオブジェクトを返す
+function getInstrumentGeneratorValues(instrumentGenerators: GeneratorList[]) {
+  function getValue(type: string, defaultValue: number = 0): number {
+    const generator = instrumentGenerators.find(g => g.type === type)
+    if (!generator) {
+      return defaultValue
+    }
+    if (Number(generator.value) === NaN) {
+      return defaultValue
+    }
+    return generator.value as number
+  }
+  
+  // First Instrument Generator must be keyRange
+  const firstInstrumentGenerator = instrumentGenerators[0]
+  if (firstInstrumentGenerator.type !== "keyRange" || !(firstInstrumentGenerator.value instanceof RangeValue)) {
+    throw new Error("invalid first instrument generator: expect keyRange")
+  }
+  const keyRange = firstInstrumentGenerator.value
+
+  // Second Instrument Generator could be velRange
+  const secondInstrumentGenerator = instrumentGenerators[1]
+  let velRange: RangeValue|undefined
+  if (secondInstrumentGenerator && secondInstrumentGenerator.type === "velRange") {
+    velRange = secondInstrumentGenerator.value as RangeValue
+  }
+
+  // Last Instrument Generator must be sampleID
+  const lastInstrumentGenerator = instrumentGenerators[instrumentGenerators.length - 1]
+  if (lastInstrumentGenerator.type !== "sampleID" || Number(lastInstrumentGenerator.value) === NaN) {
+    throw new Error("invalid last instrument generator: expect sampleID")
+  }
+  const sampleID = lastInstrumentGenerator.value as number
+
+  // Other generators
+
+  return {
+    keyRange,
+    velRange, // optional
+    sampleID,
+    volAttack: getValue("attackVolEnv", -12000),
+    volDecay: getValue("decayVolEnv", -12000),
+    volSustain: getValue("sustainVolEnv"),
+    volRelease: getValue("releaseVolEnv", -12000),
+    modAttack: getValue("attackModEnv", -12000),
+    modDecay: getValue("decayModEnv", -12000),
+    modSustain: getValue("sustainModEnv"),
+    modRelease: getValue("releaseModEnv", -12000),
+    modEnvToPitch: getValue("modEnvToPitch"),
+    modEnvToFilterFc: getValue("modEnvToFilterFc"),
+    coarseTune: getValue("coarseTune"),
+    fineTune: getValue("fineTune"),
+    scaleTuning: getValue("scaleTuning", 100),
+    freqVibLFO: getValue("freqVibLFO"),
+    startAddrsOffset: getValue("startAddrsOffset"),
+    startAddrsCoarseOffset: getValue("startAddrsCoarseOffset"),
+    endAddrsOffset: getValue("endAddrsOffset"),
+    endAddrsCoarseOffset: getValue("endAddrsCoarseOffset"),
+    startloopAddrsOffset: getValue("startloopAddrsOffset"),
+    startloopAddrsCoarseOffset: getValue("startloopAddrsCoarseOffset"),
+    endloopAddrsOffset: getValue("endloopAddrsOffset"),
+    endloopAddrsCoarseOffset: getValue("endloopAddrsCoarseOffset"),
+    overridingRootKey: getValue("overridingRootKey", undefined),
+    initialFilterQ: getValue("initialFilterQ", 1),
+    initialFilterFc: getValue("initialFilterFc", 13500),
+  }
 }
 
 export interface NoteInfo {
   sample: Int16Array
   sampleRate: number
   sampleName: string
-  playbackRate: Function
   start: number
   end: number
+  scaleTuning: number
+  playbackRate: Function
   loopStart: number
   loopEnd: number
   volAttack: number
+  volDecay: number
+  volSustain: number
+  volRelease: number
   modAttack: number
+  modDecay: number
+  modSustain: number
+  modRelease: number
   modEnvToPitch: number
   modEnvToFilterFc: number
   initialFilterFc: number
   initialFilterQ: number
   freqVibLFO: number|undefined
-  volDecay: number
-  volSustain: number
-  volRelease: number
-  modDecay: number
-  modSustain: number
-  modRelease: number
-  scaleTuning: number
   keyRange: RangeValue
-  velRange: RangeValue
-}
-
-function createNoteInfo(parser: ParseResult, targetGenerator: ModGen, baseGenerator: ModGen): NoteInfo|null {
-  const generator = { ...baseGenerator, ...targetGenerator }
-
-  const { keyRange, sampleID, velRange } = generator as any
-  if (keyRange === undefined || sampleID === undefined) {
-    return null
-  }
-
-  const volAttack = getModGenAmount(generator, 'attackVolEnv', -12000)
-  const volDecay = getModGenAmount(generator, 'decayVolEnv', -12000)
-  const volSustain = getModGenAmount(generator, 'sustainVolEnv')
-  const volRelease = getModGenAmount(generator, 'releaseVolEnv', -12000)
-  const modAttack = getModGenAmount(generator, 'attackModEnv', -12000)
-  const modDecay = getModGenAmount(generator, 'decayModEnv', -12000)
-  const modSustain = getModGenAmount(generator, 'sustainModEnv')
-  const modRelease = getModGenAmount(generator, 'releaseModEnv', -12000)
-
-  const tune = (
-    getModGenAmount(generator, 'coarseTune') +
-    getModGenAmount(generator, 'fineTune') / 100
-  )
-  const scale = getModGenAmount(generator, 'scaleTuning', 100) / 100
-  const freqVibLFO = getModGenAmount(generator, 'freqVibLFO')
-  const sampleId = getModGenAmount(generator, 'sampleID')
-  const sampleHeader = parser.sampleHeaders[sampleId]
-  const basePitch = tune + (sampleHeader.pitchCorrection / 100) - getModGenAmount(generator, 'overridingRootKey', sampleHeader.originalPitch)
-
-  return {
-    sample: parser.samples[sampleId],
-    sampleRate: sampleHeader.sampleRate,
-    sampleName: sampleHeader.sampleName,
-    modEnvToPitch: getModGenAmount(generator, 'modEnvToPitch') / 100,
-    scaleTuning: scale,
-    start:
-      getModGenAmount(generator, 'startAddrsCoarseOffset') * 32768 +
-      getModGenAmount(generator, 'startAddrsOffset'),
-    end:
-      getModGenAmount(generator, 'endAddrsCoarseOffset') * 32768 +
-      getModGenAmount(generator, 'endAddrsOffset'),
-    loopStart: (
-      //(sampleHeader.startLoop - sampleHeader.start) +
-      (sampleHeader.loopStart) +
-      getModGenAmount(generator, 'startloopAddrsCoarseOffset') * 32768 +
-      getModGenAmount(generator, 'startloopAddrsOffset')
-    ),
-    loopEnd: (
-      //(sampleHeader.endLoop - sampleHeader.start) +
-      (sampleHeader.loopEnd) +
-      getModGenAmount(generator, 'endloopAddrsCoarseOffset') * 32768 +
-      getModGenAmount(generator, 'endloopAddrsOffset')
-    ),
-    volAttack: Math.pow(2, volAttack / 1200),
-    volDecay: Math.pow(2, volDecay / 1200),
-    volSustain: volSustain / 1000,
-    volRelease: Math.pow(2, volRelease / 1200),
-    modAttack: Math.pow(2, modAttack / 1200),
-    modDecay: Math.pow(2, modDecay / 1200),
-    modSustain: modSustain / 1000,
-    modRelease: Math.pow(2, modRelease / 1200),
-    initialFilterFc: getModGenAmount(generator, 'initialFilterFc', 13500),
-    modEnvToFilterFc: getModGenAmount(generator, 'modEnvToFilterFc'),
-    initialFilterQ: getModGenAmount(generator, 'initialFilterQ', 1),
-    freqVibLFO: freqVibLFO ? Math.pow(2, freqVibLFO / 1200) * 8.176 : undefined,
-    playbackRate: (key) => Math.pow(Math.pow(2, 1 / 12), (key + basePitch) * scale),
-    keyRange,
-    velRange
-  }
-}
-
-function getModGenAmount(generator: ModGen, enumeratorType: string, opt_default: number = 0): number {
-  return generator[enumeratorType] !== undefined ? generator[enumeratorType] : opt_default
-}
-
-interface ModGen {
-  unknown: (number|RangeValue)[],
-  keyRange: RangeValue
-  // GeneratorEnumeratorTable にあるものが入る
-}
-
-function createBagModGen(indexStart: number, indexEnd: number, zoneModGen: ModulatorList[]) {
-  const modgenInfo: ModulatorList[] = []
-  const modgen: ModGen = {
-    unknown: [],
-    'keyRange': {
-      hi: 127,
-      lo: 0
-    }
-  }; // TODO
-
-  for (let i = indexStart; i < indexEnd; ++i) {
-    const info = zoneModGen[i]
-    modgenInfo.push(info)
-
-    if (info.type === 'unknown') {
-      modgen.unknown.push(info.value)
-    } else {
-      modgen[info.type] = info.value
-    }
-  }
-
-  return { modgen, modgenInfo }
-}
-
-function createInstrumentGenerator(zone: InstrumentBag[], index: number, instrumentGenerators: ModulatorList[]) {
-  const modgen = createBagModGen(
-    zone[index].instrumentGeneratorIndex,
-    zone[index + 1] ? zone[index + 1].instrumentGeneratorIndex : instrumentGenerators.length,
-    instrumentGenerators
-  )
-
-  return {
-    generator: modgen.modgen,
-    generatorInfo: modgen.modgenInfo
-  }
-}
-
-function createInstrumentModulator(zone: InstrumentBag[], index: number, instrumentModulators: ModulatorList[]) {
-  const modgen = createBagModGen(
-    zone[index].instrumentModulatorIndex,
-    zone[index + 1] ? zone[index + 1].instrumentModulatorIndex : instrumentModulators.length,
-    instrumentModulators
-  )
-
-  return {
-    modulator: modgen.modgen,
-    modulatorInfo: modgen.modgenInfo
-  }
-}
-
-function createPresetGenerator(zone: PresetBag[], index: number, presetGenerators: ModulatorList[]) {
-  const modgen = createBagModGen(
-    zone[index].presetGeneratorIndex,
-    zone[index + 1] ? zone[index + 1].presetGeneratorIndex : presetGenerators.length,
-    presetGenerators
-  )
-
-  return {
-    generator: modgen.modgen,
-    generatorInfo: modgen.modgenInfo
-  }
-}
-
-function createPresetModulator(zone: PresetBag[], index: number, presetModulators: ModulatorList[]) {
-  const modgen = createBagModGen(
-    zone[index].presetModulatorIndex,
-    zone[index + 1] ? zone[index + 1].presetModulatorIndex : presetModulators.length,
-    presetModulators
-  )
-
-  return {
-    modulator: modgen.modgen,
-    modulatorInfo: modgen.modgenInfo
-  }
+  velRange: RangeValue|undefined
 }
