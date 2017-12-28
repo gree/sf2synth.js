@@ -1,8 +1,6 @@
 import { parseRiff, Chunk, Options as RiffParserOptions } from "./RiffParser"
-import { PresetHeader, SampleHeader, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs"
-import { readString } from "./readString"
+import { PresetHeader, SampleHeader, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList, Info } from "./Structs"
 import Stream from "./Stream"
-import { InfoNameTable } from "./Constants"
 
 export interface ParseResult {
   presetHeaders: PresetHeader[]
@@ -16,7 +14,7 @@ export interface ParseResult {
   sampleHeaders: SampleHeader[]
   samples: Int16Array[]
   samplingData: Chunk
-  info: { [index: string]: string }
+  info: Info
 }
 
 export default function parse(input: Uint8Array, option: RiffParserOptions = {}): ParseResult {
@@ -100,16 +98,8 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
 }
 
 function parseInfoList(chunk: Chunk, data: Uint8Array) {
-  const info: { [index: string]: string } = {}
   const chunkList = getChunkList(chunk, data, "LIST", "INFO")
-
-  for (let p of chunkList) {
-    const { offset, size, type } = p
-    const name = InfoNameTable[type] || type
-    info[name] = readString(data, offset, offset + size)
-  }
-
-  return info
+  return Info.parse(data, chunkList)
 }
 
 function parseSdtaList(chunk: Chunk, data: Uint8Array): Chunk {

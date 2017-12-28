@@ -1,9 +1,46 @@
 import { GeneratorEnumeratorTable } from "./Constants"
 import Stream from "./Stream"
+import { Chunk } from "./RiffParser"
 
 export class VersionTag {
   major: number
   minor: number
+}
+
+export class Info {
+  comment: string
+  copyright: string
+  creationDate: string
+  engineer: string
+  name: string
+  product: string
+  software: string
+  version: string
+  soundEngine: string
+  romName: string
+  romVersion: string
+
+  // LIST - INFO の全ての chunk
+  static parse(data: Uint8Array, chunks: Chunk[]) {
+    const obj = {}
+    for (let chunk of chunks) {
+      const stream = new Stream(data, chunk.offset)
+      obj[chunk.type] = stream.readString(chunk.size)
+    }
+    const info = new Info()
+    info.comment = obj["ICMT"]
+    info.copyright = obj["ICOP"]
+    info.creationDate = obj["ICRD"]
+    info.engineer = obj["IENG"]
+    info.name = obj["INAM"]
+    info.product = obj["IPRD"]
+    info.software = obj["ISFT"]
+    info.version = obj["ifil"]
+    info.soundEngine = obj["isng"]
+    info.romName = obj["irom"]
+    info.romVersion = obj["iver"]
+    return info
+  }
 }
 
 export class PresetHeader {
