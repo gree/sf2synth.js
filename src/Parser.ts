@@ -5,16 +5,16 @@ import Stream from "./Stream"
 import { InfoNameTable } from "./Constants"
 
 export interface ParseResult {
-  presetHeader: PresetHeader[]
+  presetHeaders: PresetHeader[]
   presetZone: PresetBag[]
-  presetZoneModulator: ModulatorList[]
-  presetZoneGenerator: ModulatorList[]
-  instrument: Instrument[]
+  presetModulators: ModulatorList[]
+  presetGenerators: ModulatorList[]
+  instruments: Instrument[]
   instrumentZone: InstrumentBag[]
-  instrumentZoneModulator: ModulatorList[]
-  instrumentZoneGenerator: ModulatorList[]
-  sampleHeader: SampleHeader[]
-  sample: Int16Array[]
+  instrumentModulators: ModulatorList[]
+  instrumentGenerators: ModulatorList[]
+  sampleHeaders: SampleHeader[]
+  samples: Int16Array[]
   samplingData: Chunk
   info: { [index: string]: string }
 }
@@ -61,15 +61,15 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
     }
 
     return {
-      presetHeader: parsePhdr(chunkList[0], data),
+      presetHeaders: parsePhdr(chunkList[0], data),
       presetZone: parsePbag(chunkList[1], data),
-      presetZoneModulator: parsePmod(chunkList[2], data),
-      presetZoneGenerator: parsePgen(chunkList[3], data),
-      instrument: parseInst(chunkList[4], data),
+      presetModulators: parsePmod(chunkList[2], data),
+      presetGenerators: parsePgen(chunkList[3], data),
+      instruments: parseInst(chunkList[4], data),
       instrumentZone: parseIbag(chunkList[5], data),
-      instrumentZoneModulator: parseImod(chunkList[6], data),
-      instrumentZoneGenerator: parseIgen(chunkList[7], data),
-      sampleHeader: parseShdr(chunkList[8], data)
+      instrumentModulators: parseImod(chunkList[6], data),
+      instrumentGenerators: parseIgen(chunkList[7], data),
+      sampleHeaders: parseShdr(chunkList[8], data)
     }
   }
 
@@ -77,7 +77,7 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
 
   return {
     ...result,
-    sample: loadSample(result.sampleHeader, result.samplingData.offset, input)
+    samples: loadSample(result.sampleHeaders, result.samplingData.offset, input)
   }
 }
 
