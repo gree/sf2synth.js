@@ -6,11 +6,11 @@ export interface ParseResult {
   presetHeaders: PresetHeader[]
   presetZone: PresetBag[]
   presetModulators: ModulatorList[]
-  presetGenerators: ModulatorList[]
+  presetGenerators: GeneratorList[]
   instruments: Instrument[]
   instrumentZone: InstrumentBag[]
   instrumentModulators: ModulatorList[]
-  instrumentGenerators: ModulatorList[]
+  instrumentGenerators: GeneratorList[]
   sampleHeaders: SampleHeader[]
   samples: Int16Array[]
   samplingData: Chunk

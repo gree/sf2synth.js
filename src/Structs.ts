@@ -131,7 +131,7 @@ export class GeneratorList {
   value: number|RangeValue
 
   static parse(stream: Stream) {
-    const t = new ModulatorList()
+    const t = new GeneratorList()
     
     const code = stream.readWORD()
     const key = GeneratorEnumeratorTable[code]
