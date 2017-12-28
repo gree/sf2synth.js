@@ -37,24 +37,38 @@ export default class SoundFont {
     // Last Preset Generator must be instrument
     const lastPresetGenertor = presetGenerators[presetGenerators.length - 1]
     if (lastPresetGenertor.type !== "instrument" || Number(lastPresetGenertor.value) === NaN) {
-      throw new Error("invalid preset generator: expect instrument")
+      throw new Error("Invalid SoundFont: invalid preset generator: expect instrument")
     }
     const instrumentID = lastPresetGenertor.value as number
     const instrument = this.parsed.instruments[instrumentID]
     const nextInstrument = this.parsed.instruments[instrumentID + 1]
 
     // instrument がもつ全ての Generator を使いやすい形式にまとめる
-    const generatorValuesList = arrayRange(instrument.instrumentBagIndex, nextInstrument.instrumentBagIndex)
+    const instrumentZones = arrayRange(instrument.instrumentBagIndex, nextInstrument.instrumentBagIndex)
       .map(i => {
         const instrumentBag = this.parsed.instrumentZone[i]
         const nextInstrumentBag = this.parsed.instrumentZone[i + 1]
         const generators = this.parsed.instrumentGenerators.slice(instrumentBag.instrumentGeneratorIndex, nextInstrumentBag.instrumentGeneratorIndex)
-        return getInstrumentGeneratorValues(generators)
+        return createInstrumentZone(generators)
       })
 
+    let globalInstrumentZone: any|undefined
+    
+    // 最初のゾーンがsampleID を持たなければ global instrument zone
+    if (instrumentZones[0].sampleID === undefined) {
+      globalInstrumentZone = instrumentZones[0]
+    }
+
     // keyRange と velRange がマッチしている Generator を探す
-    const generatorValues = generatorValuesList.find(i => {
-      let isInKeyRange = key >= i.keyRange.lo && key <= i.keyRange.hi
+    const instrumentZone = instrumentZones.find(i => {
+      if (i === globalInstrumentZone) {
+        return false // global zone を除外
+      }
+
+      let isInKeyRange = false
+      if (i.keyRange) {
+        isInKeyRange = key >= i.keyRange.lo && key <= i.keyRange.hi
+      }
 
       let isInVelRange = true
       if (i.velRange) {
@@ -64,20 +78,25 @@ export default class SoundFont {
       return isInKeyRange && isInVelRange
     })
     
-    if (!generatorValues) {
+    if (!instrumentZone) {
       console.warn("instrument not found: bank=%s instrument=%s", bankNumber, instrumentNumber)
       return null
     }
 
-    const gen = generatorValues
+    if (instrumentZone.sampleID === undefined) { 
+      throw new Error("Invalid SoundFont: sampleID not found")
+    }
+    
+    const gen = {...defaultInstrumentZone, ...removeUndefined(globalInstrumentZone || {}), ...removeUndefined(instrumentZone)}
 
-    const sampleHeader = this.parsed.sampleHeaders[gen.sampleID]
+    const sample = this.parsed.samples[gen.sampleID!]
+    const sampleHeader = this.parsed.sampleHeaders[gen.sampleID!]
     const tune = gen.coarseTune + gen.fineTune / 100
     const basePitch = tune + (sampleHeader.pitchCorrection / 100) - (gen.overridingRootKey || sampleHeader.originalPitch)
     const scaleTuning = gen.scaleTuning / 100
 
     return {
-      sample: this.parsed.samples[gen.sampleID],
+      sample,
       sampleRate: sampleHeader.sampleRate,
       sampleName: sampleHeader.sampleName,
       scaleTuning,
@@ -125,63 +144,80 @@ export default class SoundFont {
   }
 }
 
+function removeUndefined(obj) {
+  const result = {}
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key]
+    }
+  })
+  return result
+}
+
 function arrayRange(start, end) {
   return Array.from({length: end - start}, (_, k) => k + start);
 }
 
 // ひとつの instrument に対応する Generator の配列から使いやすくしたオブジェクトを返す
-function getInstrumentGeneratorValues(instrumentGenerators: GeneratorList[]) {
-  function getValue(type: string, defaultValue: number = 0): number {
+function createInstrumentZone(instrumentGenerators: GeneratorList[]) {
+  function getValue(type: string): number|undefined {
     const generator = instrumentGenerators.find(g => g.type === type)
     if (!generator) {
-      return defaultValue
+      return undefined
     }
     if (Number(generator.value) === NaN) {
-      return defaultValue
+      throw new Error("something wrong")
     }
     return generator.value as number
   }
   
   // First Instrument Generator must be keyRange
   const firstInstrumentGenerator = instrumentGenerators[0]
-  if (firstInstrumentGenerator.type !== "keyRange" || !(firstInstrumentGenerator.value instanceof RangeValue)) {
-    throw new Error("invalid first instrument generator: expect keyRange")
+  let keyRange: RangeValue|undefined
+  if (firstInstrumentGenerator.type === "keyRange") {
+    if (!(firstInstrumentGenerator.value instanceof RangeValue)) {
+      throw new Error("Invalid SoundFont: keyRange is not ranged value")
+    }
+    keyRange = firstInstrumentGenerator.value as RangeValue
   }
-  const keyRange = firstInstrumentGenerator.value
 
   // Second Instrument Generator could be velRange
   const secondInstrumentGenerator = instrumentGenerators[1]
   let velRange: RangeValue|undefined
   if (secondInstrumentGenerator && secondInstrumentGenerator.type === "velRange") {
+    if (!(secondInstrumentGenerator.value instanceof RangeValue)) {
+      throw new Error("Invalid SoundFont: velRange is not ranged value")
+    }
     velRange = secondInstrumentGenerator.value as RangeValue
   }
 
   // Last Instrument Generator must be sampleID
   const lastInstrumentGenerator = instrumentGenerators[instrumentGenerators.length - 1]
-  if (lastInstrumentGenerator.type !== "sampleID" || Number(lastInstrumentGenerator.value) === NaN) {
-    throw new Error("invalid last instrument generator: expect sampleID")
+  let sampleID: number|undefined
+  if (lastInstrumentGenerator.type === "sampleID") {
+    if (Number(lastInstrumentGenerator.value) === NaN) {
+      throw new Error("Invalid SoundFont: sampleID is not number")
+    }
+    sampleID = lastInstrumentGenerator.value as number
   }
-  const sampleID = lastInstrumentGenerator.value as number
-
-  // Other generators
 
   return {
-    keyRange,
+    keyRange, // あるはずだが global zone には無いかもしれない
     velRange, // optional
-    sampleID,
-    volAttack: getValue("attackVolEnv", -12000),
-    volDecay: getValue("decayVolEnv", -12000),
+    sampleID, // global zone の場合だけない
+    volAttack: getValue("attackVolEnv"),
+    volDecay: getValue("decayVolEnv"),
     volSustain: getValue("sustainVolEnv"),
-    volRelease: getValue("releaseVolEnv", -12000),
-    modAttack: getValue("attackModEnv", -12000),
-    modDecay: getValue("decayModEnv", -12000),
+    volRelease: getValue("releaseVolEnv"),
+    modAttack: getValue("attackModEnv"),
+    modDecay: getValue("decayModEnv"),
     modSustain: getValue("sustainModEnv"),
-    modRelease: getValue("releaseModEnv", -12000),
+    modRelease: getValue("releaseModEnv"),
     modEnvToPitch: getValue("modEnvToPitch"),
     modEnvToFilterFc: getValue("modEnvToFilterFc"),
     coarseTune: getValue("coarseTune"),
     fineTune: getValue("fineTune"),
-    scaleTuning: getValue("scaleTuning", 100),
+    scaleTuning: getValue("scaleTuning"),
     freqVibLFO: getValue("freqVibLFO"),
     startAddrsOffset: getValue("startAddrsOffset"),
     startAddrsCoarseOffset: getValue("startAddrsCoarseOffset"),
@@ -191,10 +227,41 @@ function getInstrumentGeneratorValues(instrumentGenerators: GeneratorList[]) {
     startloopAddrsCoarseOffset: getValue("startloopAddrsCoarseOffset"),
     endloopAddrsOffset: getValue("endloopAddrsOffset"),
     endloopAddrsCoarseOffset: getValue("endloopAddrsCoarseOffset"),
-    overridingRootKey: getValue("overridingRootKey", undefined),
-    initialFilterQ: getValue("initialFilterQ", 1),
-    initialFilterFc: getValue("initialFilterFc", 13500),
+    overridingRootKey: getValue("overridingRootKey"),
+    initialFilterQ: getValue("initialFilterQ"),
+    initialFilterFc: getValue("initialFilterFc"),
   }
+}
+
+const defaultInstrumentZone = {
+  keyRange: new RangeValue(0, 127),
+  velRange: new RangeValue(0, 127),
+  sampleID: undefined,
+  volAttack: -12000,
+  volDecay: -12000,
+  volSustain: 0,
+  volRelease: -12000,
+  modAttack: -12000,
+  modDecay: -12000,
+  modSustain: 0,
+  modRelease: 0,
+  modEnvToPitch: 0,
+  modEnvToFilterFc: 0,
+  coarseTune: 0,
+  fineTune: 0,
+  scaleTuning: 100,
+  freqVibLFO: 0,
+  startAddrsOffset: 0,
+  startAddrsCoarseOffset: 0,
+  endAddrsOffset: 0,
+  endAddrsCoarseOffset: 0,
+  startloopAddrsOffset: 0,
+  startloopAddrsCoarseOffset: 0,
+  endloopAddrsOffset: 0,
+  endloopAddrsCoarseOffset: 0,
+  overridingRootKey: undefined,
+  initialFilterQ: 1,
+  initialFilterFc: 13500,
 }
 
 export interface NoteInfo {
