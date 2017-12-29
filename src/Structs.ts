@@ -5,40 +5,66 @@ import { Chunk } from "./RiffParser"
 export class VersionTag {
   major: number
   minor: number
+  
+  static parse(stream: Stream) {
+    const v = new VersionTag()
+    v.major = stream.readInt8()
+    v.minor = stream.readInt8()
+    return v
+  }
 }
 
 export class Info {
-  comment: string
-  copyright: string
-  creationDate: string
-  engineer: string
+  comment: string|null
+  copyright: string|null
+  creationDate: string|null
+  engineer: string|null
   name: string
-  product: string
-  software: string
-  version: string
-  soundEngine: string
-  romName: string
-  romVersion: string
+  product: string|null
+  software: string|null
+  version: VersionTag
+  soundEngine: string|null
+  romName: string|null
+  romVersion: VersionTag|null
 
   // LIST - INFO の全ての chunk
   static parse(data: Uint8Array, chunks: Chunk[]) {
-    const obj = {}
-    for (let chunk of chunks) {
-      const stream = new Stream(data, chunk.offset)
-      obj[chunk.type] = stream.readString(chunk.size)
+    function getChunk(type) {
+      return chunks.find(c => c.type === type) 
     }
+
+    function toStream(chunk) {
+      return new Stream(data, chunk.offset)
+    }
+
+    function readString(type) {
+      const chunk = getChunk(type)
+      if (!chunk) {
+        return null
+      }
+      return toStream(chunk)!.readString(chunk.size)
+    }
+
+    function readVersionTag(type) {
+      const chunk = getChunk(type)
+      if (!chunk) {
+        return null
+      }
+      return VersionTag.parse(toStream(chunk))
+    }
+    
     const info = new Info()
-    info.comment = obj["ICMT"]
-    info.copyright = obj["ICOP"]
-    info.creationDate = obj["ICRD"]
-    info.engineer = obj["IENG"]
-    info.name = obj["INAM"]
-    info.product = obj["IPRD"]
-    info.software = obj["ISFT"]
-    info.version = obj["ifil"]
-    info.soundEngine = obj["isng"]
-    info.romName = obj["irom"]
-    info.romVersion = obj["iver"]
+    info.comment = readString("ICMT")
+    info.copyright = readString("ICOP")
+    info.creationDate = readString("ICRD")
+    info.engineer = readString("IENG")
+    info.name = readString("INAM")!
+    info.product = readString("IPRD")
+    info.software = readString("ISFT")
+    info.version = readVersionTag("ifil")!
+    info.soundEngine = readString("isng")
+    info.romName = readString("irom")
+    info.romVersion = readVersionTag("iver")
     return info
   }
 }

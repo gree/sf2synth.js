@@ -14,9 +14,10 @@ describe('Parser', () => {
     expect(parser.info.product).toBe("PRDCT")
     expect(parser.info.software).toBe("Polyphone")
     expect(parser.info.soundEngine).toBe("EMU8000")
+    expect(parser.info.version.major).toBe(2)
+    expect(parser.info.version.minor).toBe(0)
 
     // FIXME: I don't know how to set these values to the soundfont
-    // expect(parser.info.version).toBe("2.04")
     // expect(parser.info.romName).toBe("")
     // expect(parser.info.romVersion).toBe("0.00")
   })
