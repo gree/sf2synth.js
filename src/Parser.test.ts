@@ -27,8 +27,8 @@ describe('Parser', () => {
   })
 
   it("should parse samples", () => {
-    expect(parser.samples.length).toBe(19)
-    expect(parser.sampleHeaders.length).toBe(19)
+    expect(parser.samples.length).toBe(17)
+    expect(parser.sampleHeaders.length).toBe(17)
     expect(parser.sampleHeaders[0].sampleName).toBe("bassdrum1")
     expect(parser.sampleHeaders[0].sampleRate).toBe(44100)
     expect(parser.sampleHeaders[0].originalPitch).toBe(76)

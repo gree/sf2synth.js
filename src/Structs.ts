@@ -52,6 +52,10 @@ export class PresetHeader {
   genre: number
   morphology: number
 
+  get isEnd() {
+    return this.presetName === "EOP"
+  }
+
   static parse(stream: Stream) {
     const p = new PresetHeader()
     p.presetName = stream.readString(20)
@@ -100,19 +104,26 @@ export class ModulatorList {
   value: number|RangeValue
   amountSourceOper: number
   transOper: number
-  type: string
+
+  get type() {
+    return GeneratorEnumeratorTable[this.destinationOper]
+  }
+
+  get isEnd() {
+    return this.sourceOper === 0 && 
+      this.destinationOper === 0 &&
+      this.value === 0 &&
+      this.amountSourceOper === 0 &&
+      this. transOper === 0
+  }
 
   static parse(stream: Stream) {
     const t = new ModulatorList()
 
     t.sourceOper = stream.readWORD()
-    const code = stream.readWORD()
-    t.destinationOper = code
-    
-    const key = GeneratorEnumeratorTable[code]
-    t.type = key!
+    t.destinationOper = stream.readWORD()
 
-    switch (key) {
+    switch (t.type) {
       case 'keyRange': /* FALLTHROUGH */
       case 'velRange': /* FALLTHROUGH */
       case 'keynum': /* FALLTHROUGH */
@@ -132,17 +143,23 @@ export class ModulatorList {
 }
 
 export class GeneratorList {
-  type: string
+  code: number
   value: number|RangeValue
+
+  get type() {
+    return GeneratorEnumeratorTable[this.code]
+  }
+
+  get isEnd() {
+    return this.code === 0 &&
+      this.value === 0
+  }
 
   static parse(stream: Stream) {
     const t = new GeneratorList()
-    
-    const code = stream.readWORD()
-    const key = GeneratorEnumeratorTable[code]
-    t.type = key!
+    t.code = stream.readWORD()
 
-    switch (key) {
+    switch (t.type) {
       case 'keynum': /* FALLTHROUGH */
       case 'keyRange': /* FALLTHROUGH */
       case 'velRange': /* FALLTHROUGH */
@@ -161,6 +178,10 @@ export class GeneratorList {
 export class Instrument {
   instrumentName: string
   instrumentBagIndex: number
+
+  get isEnd() {
+    return this.instrumentName === "EOI"
+  }
   
   static parse(stream: Stream) {
     const t = new Instrument()
@@ -193,6 +214,10 @@ export class SampleHeader {
   pitchCorrection: number
   sampleLink: number
   sampleType: number
+
+  get isEnd() {
+    return this.sampleName === "EOS"
+  }
 
   static parse(stream: Stream) {
     const s = new SampleHeader()
