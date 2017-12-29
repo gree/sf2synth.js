@@ -23,13 +23,14 @@ describe('Parser', () => {
   })
 
   it("should parse instruments", () => {
-    expect(parser.instruments.length).toBe(1)
+    expect(parser.instruments.length).toBe(2)
     expect(parser.instruments[0].instrumentName).toBe("tr909")
+    expect(parser.instruments[1].instrumentName).toBe("tr909-mod")
   })
 
   it("should parse samples", () => {
-    expect(parser.samples.length).toBe(17)
-    expect(parser.sampleHeaders.length).toBe(17)
+    expect(parser.samples.length).toBe(5)
+    expect(parser.sampleHeaders.length).toBe(5)
     expect(parser.sampleHeaders[0].sampleName).toBe("bassdrum1")
     expect(parser.sampleHeaders[0].sampleRate).toBe(44100)
     expect(parser.sampleHeaders[0].originalPitch).toBe(76)
@@ -37,7 +38,8 @@ describe('Parser', () => {
   })
 
   it("should parse presets", () => {
-    expect(parser.presetHeaders.length).toBe(1)
+    expect(parser.presetHeaders.length).toBe(2)
     expect(parser.presetHeaders[0].presetName).toBe("tr909")
+    expect(parser.presetHeaders[1].presetName).toBe("tr909-mod")
   })
 })
