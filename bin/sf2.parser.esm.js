@@ -1,9 +1,3 @@
-(function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(factory((global.SoundFont = {})));
-}(this, (function (exports) { 'use strict';
-
 const __assign = Object.assign || function (target) {
     for (var source, i = 1; i < arguments.length; i++) {
         source = arguments[i];
@@ -768,9 +762,4 @@ var defaultInstrumentZone = {
     initialFilterFc: 13500
 };
 
-exports.parse = parse;
-exports.SoundFont = SoundFont;
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-})));
+export { parse, SoundFont };

@@ -7,10 +7,16 @@ function create(name) {
     plugins: [
       typescript({ typescript: require("typescript") })
     ],
-    output: {
-      file: `bin/sf2.${name}.js`,  
-      format: "umd",
-    }
+    output: [
+      {
+        file: `bin/sf2.${name}.js`,  
+        format: "umd",
+      },
+      {
+        file: `bin/sf2.${name}.esm.js`,
+        format: "es"
+      }
+    ]
   }
 }
 
