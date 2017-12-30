@@ -1,27 +1,38 @@
-import Synthesizer from "./Synthesizer"
+export interface Listener {
+  noteOn(channel: number, key: number, velocity: number)
+  noteOff(channel: number, key: number, velocity: number)
+  setMasterVolume(volume: number)
+  programChange(channelNumber: number, instrument: number)
+  volumeChange(channelNumber: number, volume: number)
+  panpotChange(channelNumber: number, panpot: number)
+  pitchBend(channelNumber: number, pitchBend: number)
+  pitchBendSensitivity(channelNumber: number, sensitivity: number)
+  allSoundOff(channelNumber: number)
+  resetAllControl(channelNumber: number)
+}
 
 export default class MidiMessageHandler {
   private RpnMsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   private RpnLsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-  synth: Synthesizer
+  listener: Listener
 
   processMidiMessage(message: number[]) {
     const channel = message[0] & 0x0f
-    const { synth } = this
+    const { listener } = this
 
-    if (!synth) {
+    if (!listener) {
       return
     }
 
     switch (message[0] & 0xf0) {
       case 0x80: // NoteOff: 8n kk vv
-        synth.noteOff(channel, message[1], message[2])
+        listener.noteOff(channel, message[1], message[2])
         break
       case 0x90: // NoteOn: 9n kk vv
         if (message[2] > 0) {
-          synth.noteOn(channel, message[1], message[2])
+          listener.noteOn(channel, message[1], message[2])
         } else {
-          synth.noteOff(channel, message[1], 0)
+          listener.noteOff(channel, message[1], 0)
         }
         break
       case 0xB0: // Control Change: Bn cc dd
@@ -31,7 +42,7 @@ export default class MidiMessageHandler {
               case 0:
                 switch (this.RpnLsb[channel]) {
                   case 0: // Pitch Bend Sensitivity
-                    synth.pitchBendSensitivity(channel, message[2])
+                    listener.pitchBendSensitivity(channel, message[2])
                     break
                   default: 
                     break
@@ -42,16 +53,16 @@ export default class MidiMessageHandler {
             }
             break
           case 0x07: // Volume Change: Bn 07 dd
-            synth.volumeChange(channel, message[2])
+            listener.volumeChange(channel, message[2])
             break
           case 0x0A: // Panpot Change: Bn 0A dd
-            synth.panpotChange(channel, message[2])
+            listener.panpotChange(channel, message[2])
             break
           case 0x78: // All Sound Off: Bn 78 00
-            synth.allSoundOff(channel)
+            listener.allSoundOff(channel)
             break
           case 0x79: // Reset All Control: Bn 79 00
-            synth.resetAllControl(channel)
+            listener.resetAllControl(channel)
             break
           case 0x20: // BankSelect
             //console.log("bankselect:", channel, message[2])
@@ -67,11 +78,13 @@ export default class MidiMessageHandler {
         }
         break
       case 0xC0: // Program Change: Cn pp
-        synth.programChange(channel, message[1])
+        listener.programChange(channel, message[1])
         break
-      case 0xE0: // Pitch Bend
-        synth.pitchBend(channel, message[1], message[2])
+      case 0xE0: { // Pitch Bend
+        const bend = ((message[1] & 0x7f) | ((message[2] & 0x7f) << 7)) - 0x2000
+        listener.pitchBend(channel, bend)
         break
+      }
       case 0xf0: // System Exclusive Message
         // ID number
         switch (message[1]) {
@@ -88,7 +101,7 @@ export default class MidiMessageHandler {
                   case 0x01: { // master volume
                     const volume = message[5] + (message[6] << 7)
                     const MAX_VOLUME = 0x4000 - 1
-                    synth.setMasterVolume(volume / MAX_VOLUME)
+                    listener.setMasterVolume(volume / MAX_VOLUME)
                     break
                   }
                   default: 

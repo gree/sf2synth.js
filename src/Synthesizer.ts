@@ -2,6 +2,7 @@ import SynthesizerNote from "./SynthesizerNote"
 import parse from "./Parser"
 import SoundFont from "./SoundFont"
 import { InstrumentState } from "./SynthesizerNote"
+import { Listener } from "./MidiMessageHandler"
 
 const BASE_VOLUME = 0.4
 
@@ -14,42 +15,13 @@ class Channel {
   currentNoteOn: SynthesizerNote[] = []
 }
 
-interface View {
-  draw()
-  remove()
-  getInstrumentElement()
-  getKeyElement()
-  noteOn(channelNumber: number, key: number)
-  noteOff(channelNumber: number, key: number)
-  programChange(channelNumber: number, instrument: number)
-  volumeChange(channelNumber: number, volume: number)
-  panpotChange(channelNumber: number, panpot: number)
-  pitchBend(channelNumber: number, pitchBend: number)
-  pitchBendSensitivity(channelNumber: number, sensitivity: number)
-}
-
-class DummyView implements View {
-  draw() { }
-  remove() { }
-  getInstrumentElement() { }
-  getKeyElement() { }
-  noteOn() { }
-  noteOff() { }
-  programChange() { }
-  volumeChange() { }
-  panpotChange() { }
-  pitchBend() { }
-  pitchBendSensitivity() { }
-}
-
-export default class Synthesizer {
+export default class Synthesizer implements Listener {
   bank: number = 0
   bufferSize: number = 1024
   ctx: AudioContext
   gainMaster: GainNode
   channels: Channel[] = []
   masterVolume: number = 1.0
-  view: View = new DummyView()
   soundFont: SoundFont
 
   constructor(ctx) {
@@ -65,7 +37,7 @@ export default class Synthesizer {
       this.programChange(i, i !== 9 ? i : 0)
       this.volumeChange(i, 0x64)
       this.panpotChange(i, 0x40)
-      this.pitchBend(i, 0x00, 0x40); // 8192
+      this.pitchBend(i, 0)
       this.pitchBendSensitivity(i, 2)
     }
   }
@@ -75,11 +47,11 @@ export default class Synthesizer {
     this.soundFont = new SoundFont(parser)
   }
 
-  connect(destination) {
+  connect(destination: AudioNode) {
     this.gainMaster.connect(destination)
   }
 
-  setMasterVolume(volume) {
+  setMasterVolume(volume: number) {
     this.masterVolume = volume
     this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
   }
@@ -115,8 +87,6 @@ export default class Synthesizer {
     const note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey)
     note.noteOn()
     channel.currentNoteOn.push(note)
-
-    this.view.noteOn(channelNumber, key)
   }
 
   noteOff(channelNumber: number, key: number, _velocity: number) {
@@ -143,42 +113,31 @@ export default class Synthesizer {
         --il
       }
     }
-
-    this.view.noteOff(channelNumber, key)
   }
 
   programChange(channelNumber: number, instrument: number) {
-    this.view.programChange(channelNumber, instrument)
     this.channels[channelNumber].instrument = instrument
   }
 
   volumeChange(channelNumber: number, volume: number) {
-    this.view.volumeChange(channelNumber, volume)
     this.channels[channelNumber].volume = volume
   }
 
   panpotChange(channelNumber: number, panpot: number) {
-    this.view.panpotChange(channelNumber, panpot)
     this.channels[channelNumber].panpot = panpot
   }
 
-  pitchBend(channelNumber: number, lowerByte: number, higherByte: number) {
-    const bend = (lowerByte & 0x7f) | ((higherByte & 0x7f) << 7)
+  pitchBend(channelNumber: number, pitchBend: number) {
     const channel = this.channels[channelNumber]
-    const currentNoteOn = channel.currentNoteOn
-    const calculated = bend - 0x2000
 
-    this.view.pitchBend(channelNumber, calculated)
-
-    for (let i = 0, il = currentNoteOn.length; i < il; ++i) {
-      currentNoteOn[i].updatePitchBend(calculated)
+    for (let note of channel.currentNoteOn) {
+      note.updatePitchBend(pitchBend)
     }
 
-    channel.pitchBend = bend
+    channel.pitchBend = pitchBend
   }
 
   pitchBendSensitivity(channelNumber: number, sensitivity: number) {
-    this.view.pitchBendSensitivity(channelNumber, sensitivity)
     this.channels[channelNumber].pitchBendSensitivity = sensitivity
   }
 
@@ -191,6 +150,6 @@ export default class Synthesizer {
   }
 
   resetAllControl(channelNumber: number) {
-    this.pitchBend(channelNumber, 0x00, 0x40); // 8192
+    this.pitchBend(channelNumber, 0)
   }
 }
