@@ -58,8 +58,6 @@ export default class WebMidiLink {
     if (!this.synth) {
       const ctx = new AudioContext()
       synth = this.synth = new Synthesizer(ctx)
-      synth.init()
-      synth.refreshInstruments(input)
       synth.connect(ctx.destination)
       const view = this.view = new View()
       document.body.querySelector(".synth")!.appendChild(view.draw(synth))
@@ -67,8 +65,8 @@ export default class WebMidiLink {
       window.addEventListener('message', this.onmessage.bind(this), false)
     } else {
       synth = this.synth
-      synth.refreshInstruments(input)
     }
+    synth.loadSoundFont(input)
 
     // link ready
     if (window.opener) {

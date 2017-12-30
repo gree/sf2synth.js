@@ -42,7 +42,7 @@ export default class Synthesizer implements Listener {
     }
   }
 
-  refreshInstruments(input: Uint8Array) {
+  loadSoundFont(input: Uint8Array) {
     const parser = parse(input)
     this.soundFont = new SoundFont(parser)
   }
