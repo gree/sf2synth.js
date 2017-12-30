@@ -59,14 +59,15 @@ export default class WebMidiLink {
       const ctx = new AudioContext()
       synth = this.synth = new Synthesizer(ctx)
       synth.connect(ctx.destination)
+      synth.loadSoundFont(input)
       const view = this.view = new View()
       document.body.querySelector(".synth")!.appendChild(view.draw(synth))
       this.midiMessageHandler.listener = delegateProxy<Listener>([synth, view]) 
       window.addEventListener('message', this.onmessage.bind(this), false)
     } else {
       synth = this.synth
+      synth.loadSoundFont(input)
     }
-    synth.loadSoundFont(input)
 
     // link ready
     if (window.opener) {
