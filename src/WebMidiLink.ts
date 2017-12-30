@@ -1,6 +1,7 @@
 import Synthesizer from "./Synthesizer"
 import View from "./View"
-import MidiMessageHandler from "./MidiMessageHandler"
+import MidiMessageHandler, { Listener } from "./MidiMessageHandler"
+import delegateProxy from "./delegateProxy"
 
 export default class WebMidiLink {
   loadCallback: (ArrayBuffer) => void
@@ -62,7 +63,7 @@ export default class WebMidiLink {
       synth.connect(ctx.destination)
       const view = this.view = new View()
       document.body.querySelector(".synth")!.appendChild(view.draw(synth))
-      this.midiMessageHandler.listener = synth
+      this.midiMessageHandler.listener = delegateProxy<Listener>([synth, view]) 
       window.addEventListener('message', this.onmessage.bind(this), false)
     } else {
       synth = this.synth

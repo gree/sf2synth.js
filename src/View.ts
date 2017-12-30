@@ -90,7 +90,9 @@ export default class View implements Listener {
       if (select) {
         select.addEventListener('change', event => {
           const target = event.target as HTMLSelectElement
-          synth.programChange(channel, parseInt(target.value, 10))
+          const program = parseInt(target.value, 10)
+          this.programChange(channel, program)
+          synth.programChange(channel, program)
         }, false)
         select.selectedIndex = synth.channels[i].instrument
       }
@@ -102,21 +104,29 @@ export default class View implements Listener {
         notes[j].addEventListener('mousedown', event => {
           event.preventDefault()
           this.drag = true
+          this.noteOn(channel, key, 127)
           synth.noteOn(channel, key, 127)
+
+          const onMouseUp = event => {
+            document.removeEventListener('mouseup', onMouseUp)
+            event.preventDefault()
+            this.drag = false
+            this.noteOff(channel, key, 0)
+            synth.noteOff(channel, key, 0)
+          }
+          
+          document.addEventListener('mouseup', onMouseUp)
         })
         notes[j].addEventListener('mouseover', event => {
           event.preventDefault()
           if (this.drag) {
+            this.noteOn(channel, key, 127)
             synth.noteOn(channel, key, 127)
           }
         })
         notes[j].addEventListener('mouseout', event => {
           event.preventDefault()
-          synth.noteOff(channel, key, 0)
-        })
-        notes[j].addEventListener('mouseup', event => {
-          event.preventDefault()
-          this.drag = false
+          this.noteOff(channel, key, 0)
           synth.noteOff(channel, key, 0)
         })
       }
@@ -136,14 +146,14 @@ export default class View implements Listener {
     this.element = null
   }
 
-  getInstrumentElement(channel: number): Element|null {
+  private getInstrumentElement(channel: number): Element|null {
     if (!this.element) {
       return null
     }
     return this.element.querySelectorAll(".instrument")[channel]
   }
 
-  getKeyElement(channel: number, key: number): Element|null {
+  private getKeyElement(channel: number, key: number): Element|null {
     const elem = this.getInstrumentElement(channel)
     if (!elem) {
       return null
@@ -151,7 +161,7 @@ export default class View implements Listener {
     return elem.querySelectorAll(".key")[key]
   }
 
-  findInstrumentElement(channel: number, query: string): Element|null {
+  private findInstrumentElement(channel: number, query: string): Element|null {
     const elem = this.getInstrumentElement(channel)
     if (!elem) {
       return null
@@ -159,55 +169,61 @@ export default class View implements Listener {
     return elem.querySelector(query)
   }
 
-  noteOn(channel: number, key: number) {
+  noteOn(channel: number, key: number, _velocity: number) {
     const element = this.getKeyElement(channel, key)
     if (element) {
       element.classList.add('note-on')
     }
   }
 
-  noteOff(channel: number, key: number) {
+  noteOff(channel: number, key: number, _velocity: number) {
     const element = this.getKeyElement(channel, key)
     if (element) {
       element.classList.remove('note-on')
     }
   }
 
-  programChange(channel: number, instrument) {
+  programChange(channel: number, instrument: number) {
     const select = this.findInstrumentElement(channel, ".program select") as HTMLSelectElement|undefined
     if (select) {
-      select.value = instrument
+      select.value = `${instrument}`
     }
   }
 
-  volumeChange(channel: number, volume) {
+  volumeChange(channel: number, volume: number) {
     const element = this.findInstrumentElement(channel, ".volume")
     if (element) {
-      element.textContent = volume
+      element.textContent = `${volume}`
     }
   }
 
-  panpotChange(channel: number, panpot: string) {
+  panpotChange(channel: number, panpot: number) {
     const element = this.findInstrumentElement(channel, ".panpot")
     if (element) {
-      element.textContent = panpot
+      element.textContent = `${panpot}`
     }
   }
 
-  pitchBend(channel: number, calculatedPitch: string) {
+  pitchBend(channel: number, pitchBend: number) {
     const element = this.findInstrumentElement(channel, ".pitchBend")
     if (element) {
-      element.textContent = calculatedPitch
+      element.textContent = `${pitchBend}`
     }
   }
 
-  pitchBendSensitivity(channel: number, sensitivity: string) {
+  pitchBendSensitivity(channel: number, sensitivity: number) {
     const element = this.findInstrumentElement(channel, ".pitchBendSensitivity")
     if (element) {
-      element.textContent = sensitivity
+      element.textContent = `${sensitivity}`
     }
+  }
+
+  allSoundOff(_channelNumber: number) {
   }
 
   setMasterVolume(_volume: number) {
+  }
+
+  resetAllControl(_channelNumber: number) {
   }
 }
