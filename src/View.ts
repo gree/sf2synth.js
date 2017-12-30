@@ -1,5 +1,6 @@
 import Synthesizer from "./Synthesizer"
 import ProgramNames from "./ProgramNames"
+import { Listener } from "./MidiMessageHandler"
 
 function render(str: string): Element {
   const wrapper = document.createElement("div")
@@ -71,7 +72,7 @@ function mergeProgramNames(left: {[index: number]: string[]}, right: {[index: nu
   return result
 }
 
-export default class View {
+export default class View implements Listener {
   private element: Element|null
   private drag: boolean = false
 
@@ -205,5 +206,8 @@ export default class View {
     if (element) {
       element.textContent = sensitivity
     }
+  }
+
+  setMasterVolume(_volume: number) {
   }
 }

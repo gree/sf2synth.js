@@ -62,7 +62,7 @@ export default class WebMidiLink {
       synth.connect(ctx.destination)
       const view = this.view = new View()
       document.body.querySelector(".synth")!.appendChild(view.draw(synth))
-      this.midiMessageHandler.synth = synth
+      this.midiMessageHandler.listener = synth
       window.addEventListener('message', this.onmessage.bind(this), false)
     } else {
       synth = this.synth
