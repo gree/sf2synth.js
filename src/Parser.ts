@@ -1,22 +1,20 @@
 import { parseRiff, Chunk, Options as RiffParserOptions } from "./RiffParser"
-import { PresetHeader, Sample, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList } from "./Structs"
-import { readString } from "./readString"
+import { PresetHeader, SampleHeader, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList, Info } from "./Structs"
 import Stream from "./Stream"
-import { InfoNameTable } from "./Constants"
 
 export interface ParseResult {
-  presetHeader: PresetHeader[]
+  presetHeaders: PresetHeader[]
   presetZone: PresetBag[]
-  presetZoneModulator: ModulatorList[]
-  presetZoneGenerator: ModulatorList[]
-  instrument: Instrument[]
+  presetModulators: ModulatorList[]
+  presetGenerators: GeneratorList[]
+  instruments: Instrument[]
   instrumentZone: InstrumentBag[]
-  instrumentZoneModulator: ModulatorList[]
-  instrumentZoneGenerator: ModulatorList[]
-  sampleHeader: Sample[]
-  sample: Int16Array[]
+  instrumentModulators: ModulatorList[]
+  instrumentGenerators: GeneratorList[]
+  sampleHeaders: SampleHeader[]
+  samples: Int16Array[]
   samplingData: Chunk
-  info: { [index: string]: string }
+  info: Info
 }
 
 export default function parse(input: Uint8Array, option: RiffParserOptions = {}): ParseResult {
@@ -61,15 +59,15 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
     }
 
     return {
-      presetHeader: parsePhdr(chunkList[0], data),
+      presetHeaders: parsePhdr(chunkList[0], data),
       presetZone: parsePbag(chunkList[1], data),
-      presetZoneModulator: parsePmod(chunkList[2], data),
-      presetZoneGenerator: parsePgen(chunkList[3], data),
-      instrument: parseInst(chunkList[4], data),
+      presetModulators: parsePmod(chunkList[2], data),
+      presetGenerators: parsePgen(chunkList[3], data),
+      instruments: parseInst(chunkList[4], data),
       instrumentZone: parseIbag(chunkList[5], data),
-      instrumentZoneModulator: parseImod(chunkList[6], data),
-      instrumentZoneGenerator: parseIgen(chunkList[7], data),
-      sampleHeader: parseShdr(chunkList[8], data)
+      instrumentModulators: parseImod(chunkList[6], data),
+      instrumentGenerators: parseIgen(chunkList[7], data),
+      sampleHeaders: parseShdr(chunkList[8], data)
     }
   }
 
@@ -77,7 +75,7 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
 
   return {
     ...result,
-    sample: loadSample(result.sampleHeader, result.samplingData.offset, input)
+    samples: loadSample(result.sampleHeaders, result.samplingData.offset, input)
   }
 }
 
@@ -100,16 +98,8 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
 }
 
 function parseInfoList(chunk: Chunk, data: Uint8Array) {
-  const info: { [index: string]: string } = {}
   const chunkList = getChunkList(chunk, data, "LIST", "INFO")
-
-  for (let p of chunkList) {
-    const { offset, size, type } = p
-    const name = InfoNameTable[type] || type
-    info[name] = readString(data, offset, offset + size)
-  }
-
-  return info
+  return Info.parse(data, chunkList)
 }
 
 function parseSdtaList(chunk: Chunk, data: Uint8Array): Chunk {
@@ -122,7 +112,7 @@ function parseSdtaList(chunk: Chunk, data: Uint8Array): Chunk {
   return chunkList[0]
 }
 
-function parseChunk<T>(chunk: Chunk, data: Uint8Array, type: string, factory: (Stream) => T): T[] {
+function parseChunk<T>(chunk: Chunk, data: Uint8Array, type: string, clazz: { parse: (stream: Stream) => T }, terminate?: (obj: T) => boolean): T[] {
   const result: T[] = []
 
   if (chunk.type !== type) {
@@ -133,21 +123,25 @@ function parseChunk<T>(chunk: Chunk, data: Uint8Array, type: string, factory: (S
   const size = chunk.offset + chunk.size
   
   while (stream.ip < size) {
-    result.push(factory(stream))
+    const obj = clazz.parse(stream)
+    if (terminate && terminate(obj)) {
+      break
+    }
+    result.push(obj)
   }
 
   return result
 }
 
-const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", stream => PresetHeader.parse(stream)).filter(p => p.presetName !== "EOP")
-const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", stream => PresetBag.parse(stream))
-const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", stream => Instrument.parse(stream)).filter(i => i.instrumentName !== "EOI")
-const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", stream => InstrumentBag.parse(stream))
-const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", stream => ModulatorList.parse(stream))
-const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", stream => ModulatorList.parse(stream))
-const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", stream => GeneratorList.parse(stream))
-const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", stream => GeneratorList.parse(stream))
-const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", stream => Sample.parse(stream)).filter(s => s.sampleName !== "EOS")
+const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", PresetHeader, p => p.isEnd)
+const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", PresetBag)
+const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", Instrument, i => i.isEnd)
+const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", InstrumentBag)
+const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", ModulatorList, m => m.isEnd)
+const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", ModulatorList, m => m.isEnd)
+const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", GeneratorList, g => g.isEnd)
+const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", GeneratorList, g => g.isEnd)
+const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", SampleHeader, s => s.isEnd)
 
 function adjustSampleData(sample, sampleRate) {
   let multiply = 1
@@ -170,7 +164,7 @@ function adjustSampleData(sample, sampleRate) {
   }
 }
 
-function loadSample(sampleHeader: Sample[], samplingDataOffset: number, data: Uint8Array): Int16Array[] {
+function loadSample(sampleHeader: SampleHeader[], samplingDataOffset: number, data: Uint8Array): Int16Array[] {
   return sampleHeader.map(header => {
     let sample = new Int16Array(new Uint8Array(data.subarray(
       samplingDataOffset + header.start * 2,
@@ -180,8 +174,8 @@ function loadSample(sampleHeader: Sample[], samplingDataOffset: number, data: Ui
       const adjust = adjustSampleData(sample, header.sampleRate)
       sample = adjust.sample
       header.sampleRate *= adjust.multiply
-      header.startLoop *= adjust.multiply
-      header.endLoop *= adjust.multiply
+      header.loopStart *= adjust.multiply
+      header.loopEnd *= adjust.multiply
     }
     return sample
   })

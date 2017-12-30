@@ -77,7 +77,7 @@ export default class View {
 
   draw(synth: Synthesizer): Element {
     const element = this.element = render(`<div />`)
-    const programNames = mergeProgramNames(programNamesFromBankSet(synth.soundFont.bankSet), ProgramNames)
+    const programNames = mergeProgramNames(programNamesFromBankSet(synth.soundFont.getPresetNames()), ProgramNames)
 
     for (let i = 0; i < 16; ++i) {
       const bank = i !== 9 ? 0 : 128

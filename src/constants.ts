@@ -57,17 +57,3 @@ export const GeneratorEnumeratorTable = [
   'exclusiveClass',
   'overridingRootKey'
 ]
-
-export const InfoNameTable = {
-  ICMT: "comment",
-  ICOP: "copyright",
-  ICRD: "creation_date",
-  IENG: "engineer",
-  INAM: "name",
-  IPRD: "product",
-  ISFT: "software",
-  ifil: "version",
-  isng: "sound_engine",
-  irom: "rom_name",
-  iver: "rom_version"
-}
