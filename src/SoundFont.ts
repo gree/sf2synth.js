@@ -58,7 +58,7 @@ export default class SoundFont {
 
     // Last Preset Generator must be instrument
     const lastPresetGenertor = presetGenerators[presetGenerators.length - 1]
-    if (lastPresetGenertor.type !== "instrument" || Number(lastPresetGenertor.value) === NaN) {
+    if (lastPresetGenertor.type !== "instrument" || isNaN(Number(lastPresetGenertor.value))) {
       throw new Error("Invalid SoundFont: invalid preset generator: expect instrument")
     }
     const instrumentID = lastPresetGenertor.value as number
@@ -182,7 +182,7 @@ function createInstrumentZone(instrumentGenerators: GeneratorList[]) {
     if (!generator) {
       return undefined
     }
-    if (Number(generator.value) === NaN) {
+    if (isNaN(Number(generator.value))) {
       throw new Error("something wrong")
     }
     return generator.value as number
@@ -212,7 +212,7 @@ function createInstrumentZone(instrumentGenerators: GeneratorList[]) {
   const lastInstrumentGenerator = instrumentGenerators[instrumentGenerators.length - 1]
   let sampleID: number|undefined
   if (lastInstrumentGenerator && lastInstrumentGenerator.type === "sampleID") {
-    if (Number(lastInstrumentGenerator.value) === NaN) {
+    if (isNaN(Number(lastInstrumentGenerator.value))) {
       throw new Error("Invalid SoundFont: sampleID is not number")
     }
     sampleID = lastInstrumentGenerator.value as number

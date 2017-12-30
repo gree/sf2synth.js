@@ -23,7 +23,7 @@ export default class Stream {
   readDWORD(bigEndian: boolean = false): number {
     if (bigEndian) {
       return (
-        this.data[this.ip++] << 24| 
+        (this.data[this.ip++] << 24)| 
         (this.data[this.ip++] << 16) | 
         (this.data[this.ip++] << 8) | 
         (this.data[this.ip++])
