@@ -81,7 +81,7 @@ export default class MidiMessageHandler {
         listener.programChange(channel, message[1])
         break
       case 0xE0: { // Pitch Bend
-        const bend = ((message[1] & 0x7f) | ((message[2] & 0x7f) << 7)) - 0x2000
+        const bend = ((message[1] & 0x7f) | ((message[2] & 0x7f) << 7))
         listener.pitchBend(channel, bend)
         break
       }
