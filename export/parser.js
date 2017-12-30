@@ -1,4 +1,7 @@
-import Parser from "../src/Parser.ts"
+import parse from "../src/Parser.ts"
+import SoundFont from "../src/SoundFont.ts"
+
 export {
-  Parser
+  parse,
+  SoundFont
 }
