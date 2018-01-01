@@ -157,7 +157,6 @@ var GeneratorEnumeratorTable = [
     'exclusiveClass',
     'overridingRootKey'
 ];
-//# sourceMappingURL=Constants.js.map
 
 var VersionTag = /** @class */ (function () {
     function VersionTag() {
@@ -515,8 +514,11 @@ function loadSample(sampleHeader, samplingDataOffset, data) {
         return sample;
     });
 }
-//# sourceMappingURL=Parser.js.map
 
+/**
+ * Parser で読み込んだサウンドフォントのデータを
+ * Synthesizer から利用しやすい形にするクラス
+ */
 var SoundFont = /** @class */ (function () {
     function SoundFont(parsed) {
         this.parsed = parsed;

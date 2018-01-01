@@ -954,7 +954,7 @@ var Synthesizer = /** @class */ (function () {
             velocity: velocity,
             panpot: panpot,
             volume: channel.volume / 127,
-            pitchBend: channel.pitchBend - 0x2000,
+            pitchBend: channel.pitchBend,
             pitchBendSensitivity: channel.pitchBendSensitivity
         };
         // note on
@@ -993,6 +993,7 @@ var Synthesizer = /** @class */ (function () {
         this.channels[channelNumber].panpot = panpot;
     };
     Synthesizer.prototype.pitchBend = function (channelNumber, pitchBend) {
+        pitchBend -= 0x2000;
         var channel = this.channels[channelNumber];
         for (var _i = 0, _a = channel.currentNoteOn; _i < _a.length; _i++) {
             var note = _a[_i];

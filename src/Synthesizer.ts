@@ -79,7 +79,7 @@ export default class Synthesizer implements Listener {
       velocity: velocity,
       panpot: panpot,
       volume: channel.volume / 127,
-      pitchBend: channel.pitchBend - 0x2000,
+      pitchBend: channel.pitchBend,
       pitchBendSensitivity: channel.pitchBendSensitivity
     }
 
@@ -128,6 +128,7 @@ export default class Synthesizer implements Listener {
   }
 
   pitchBend(channelNumber: number, pitchBend: number) {
+    pitchBend -= 0x2000
     const channel = this.channels[channelNumber]
 
     for (let note of channel.currentNoteOn) {
