@@ -1,9 +1,3 @@
-(function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(factory((global.SoundFont = {})));
-}(this, (function (exports) { 'use strict';
-
 const __assign = Object.assign || function (target) {
     for (var source, i = 1; i < arguments.length; i++) {
         source = arguments[i];
@@ -286,7 +280,6 @@ var GeneratorEnumeratorTable = [
     'exclusiveClass',
     'overridingRootKey'
 ];
-//# sourceMappingURL=Constants.js.map
 
 var VersionTag = /** @class */ (function () {
     function VersionTag() {
@@ -644,8 +637,11 @@ function loadSample(sampleHeader, samplingDataOffset, data) {
         return sample;
     });
 }
-//# sourceMappingURL=Parser.js.map
 
+/**
+ * Parser で読み込んだサウンドフォントのデータを
+ * Synthesizer から利用しやすい形にするクラス
+ */
 var SoundFont = /** @class */ (function () {
     function SoundFont(parsed) {
         this.parsed = parsed;
@@ -1466,7 +1462,6 @@ function delegateProxy(targets) {
         }
     });
 }
-//# sourceMappingURL=delegateProxy.js.map
 
 var WebMidiLink = /** @class */ (function () {
     function WebMidiLink() {
@@ -1567,12 +1562,4 @@ var WebMidiLink = /** @class */ (function () {
     return WebMidiLink;
 }());
 
-exports.WebMidiLink = WebMidiLink;
-exports.Synthesizer = Synthesizer;
-exports.View = View;
-exports.MidiMessageHandler = MidiMessageHandler;
-exports.delegateProxy = delegateProxy;
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-})));
+export { WebMidiLink, Synthesizer, View, MidiMessageHandler, delegateProxy };

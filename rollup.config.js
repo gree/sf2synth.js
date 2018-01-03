@@ -1,4 +1,5 @@
-import typescript from "rollup-plugin-typescript"
+import typescript from 'rollup-plugin-typescript'
+import serve from 'rollup-plugin-serve'
 
 function create(name) {
   return {
@@ -9,18 +10,20 @@ function create(name) {
     ],
     output: [
       {
-        file: `bin/sf2.${name}.js`,  
+        file: `public/js/sf2.${name}.js`,  
         format: "umd",
       },
       {
-        file: `bin/sf2.${name}.esm.js`,
+        file: `public/js/sf2.${name}.esm.js`,
         format: "es"
       }
     ]
-  }
+  };
 }
 
 export default [
   create("parser"),
   create("synth")
-]
+];
+
+serve('dist');
