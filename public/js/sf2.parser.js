@@ -163,7 +163,6 @@ var GeneratorEnumeratorTable = [
     'exclusiveClass',
     'overridingRootKey'
 ];
-//# sourceMappingURL=Constants.js.map
 
 var VersionTag = /** @class */ (function () {
     function VersionTag() {
@@ -521,7 +520,6 @@ function loadSample(sampleHeader, samplingDataOffset, data) {
         return sample;
     });
 }
-//# sourceMappingURL=Parser.js.map
 
 /**
  * Parser で読み込んだサウンドフォントのデータを
@@ -646,8 +644,9 @@ var SoundFont = /** @class */ (function () {
             initialFilterQ: gen.initialFilterQ,
             initialAttenuation: gen.initialAttenuation,
             freqVibLFO: gen.freqVibLFO ? convertTime(gen.freqVibLFO) * 8.176 : undefined,
-            panpot: gen.panpot,
-            mute: false
+            pan: gen.pan,
+            mute: false,
+            releaseTime: gen.releaseTime
         };
     };
     // presetNames[bankNumber][presetNumber] = presetName
@@ -750,7 +749,8 @@ function createInstrumentZone(instrumentGenerators) {
         overridingRootKey: getValue("overridingRootKey"),
         initialFilterQ: getValue("initialFilterQ"),
         initialFilterFc: getValue("initialFilterFc"),
-        sampleModes: getValue("sampleModes")
+        sampleModes: getValue("sampleModes"),
+        pan: getValue("pan")
     };
 }
 var defaultInstrumentZone = {
@@ -788,9 +788,9 @@ var defaultInstrumentZone = {
     initialFilterQ: 1,
     initialFilterFc: 13500,
     sampleModes: 0,
-    panpot: 64,
     mute: false,
-    releaseTime: 0
+    releaseTime: 64,
+    pan: undefined
 };
 
 exports.parse = parse;

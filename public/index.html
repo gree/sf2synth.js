@@ -12,10 +12,11 @@
 <body>
   <div class="synth"></div>
   <script src="./js/sf2.synth.js"></script>
-  <script>/* <![CDATA[ */
+  <script>
+    /* <![CDATA[ */
     //const url = "./fixture/TestSoundFont.sf2"
     const url = "//cdn.rawgit.com/logue/smfplayer.js/gh-pages/Yamaha%20XG%20Sound%20Set.sf2";
-    const wml = new SoundFont.WebMidiLink()
+    const wml = new SoundFont.WebMidiLink(".synth")
     wml.setLoadCallback(function (arraybuffer) {
       console.info('Loaded.');
     })

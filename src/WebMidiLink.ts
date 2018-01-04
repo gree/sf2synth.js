@@ -10,21 +10,24 @@ export default class WebMidiLink {
   synth: Synthesizer
   view: View
   target: Element | null
-  wml : Window | null
+  wml: Window | null
 
   constructor(target = ".synth") {
     this.midiMessageHandler = new MidiMessageHandler()
     this.target = document.body.querySelector(target);
+    if (!this.target) {
+      throw "Target DOM is not found.";
+    }
     if (window.opener) {
       this.wml = window.opener;
-    } else if (window.parent !== window){
+    } else if (window.parent !== window) {
       this.wml = window.parent;
     } else {
       this.wml = null;
     }
-    
 
-    window.addEventListener('DOMContentLoaded', function() {
+
+    window.addEventListener('DOMContentLoaded', function () {
       this.ready = true
     }.bind(this), false)
   }
@@ -43,15 +46,17 @@ export default class WebMidiLink {
   load(url) {
     const xhr = new XMLHttpRequest()
     const progress = this.target!.appendChild(document.createElement('progress'));
+    const percentage = progress.parentNode!.insertBefore(document.createElement('outpout'), progress.nextElementSibling);
 
     xhr.open('GET', url, true)
     xhr.responseType = 'arraybuffer'
 
-    xhr.addEventListener('load', function(ev) {
+    xhr.addEventListener('load', function (ev) {
       const xhr = ev.target as XMLHttpRequest
 
       this.onload(xhr.response)
-      this.target.removeChild(this.target.firstChild);
+      this.target!.removeChild(progress);
+      this.target!.removeChild(percentage);
       if (typeof this.loadCallback === 'function') {
         this.loadCallback(xhr.response)
       }
@@ -60,6 +65,7 @@ export default class WebMidiLink {
     xhr.addEventListener('progress', function (e) {
       progress.max = e.total;
       progress.value = e.loaded;
+      percentage.innerText = (e.loaded / e.total) / 100 + ' %';
       // NOTE: This message is not compliant of WebMidiLink.
       if (this.wml) this.wml.postMessage('link,progress,' + e.loaded + ',' + e.total, '*');
     }.bind(this), false)
@@ -81,7 +87,7 @@ export default class WebMidiLink {
       synth.loadSoundFont(input)
       const view = this.view = new View()
       this.target!.appendChild(view.draw(synth))
-      this.midiMessageHandler.listener = delegateProxy<Listener>([synth, view]) 
+      this.midiMessageHandler.listener = delegateProxy<Listener>([synth, view])
       window.addEventListener('message', this.onmessage.bind(this), false)
     } else {
       synth = this.synth
@@ -99,7 +105,7 @@ export default class WebMidiLink {
     switch (type) {
       case 'midi':
         this.midiMessageHandler.processMidiMessage(
-          msg.map(function(hex) {
+          msg.map(function (hex) {
             return parseInt(hex, 16)
           })
         )

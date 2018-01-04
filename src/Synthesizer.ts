@@ -26,7 +26,6 @@ class Channel {
 }
 
 export default class Synthesizer implements Listener {
-  bank: number = 0
   bufferSize: number = 1024
   ctx: AudioContext
   gainMaster: GainNode
@@ -45,6 +44,7 @@ export default class Synthesizer implements Listener {
   }
 
   init() {
+    this.channels = [];
     for (let i = 0; i < 16; ++i) {
       this.channels.push(new Channel())
       this.programChange(i, 0x00)
@@ -72,23 +72,28 @@ export default class Synthesizer implements Listener {
   }
 
   setMasterVolume(volume: number) {
+    const vol = BASE_VOLUME * volume / 0x8000;
     this.masterVolume = volume
-    //this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
-    this.gainMaster.gain.setTargetAtTime(BASE_VOLUME * volume / 0x8000, this.ctx.currentTime, 0.015);
+    if (vol) {
+      //this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
+      this.gainMaster.gain.setTargetAtTime(BASE_VOLUME * volume / 0x8000, this.ctx.currentTime, 0.015);
+    }
   }
 
   noteOn(channelNumber: number, key: number, velocity: number) {
     if (!this.soundFont) {
-      console.warn('could not load sound.')
       return
     }
     const bankNumber = this.getBank(channelNumber);
     const channel = this.channels[channelNumber]
 
+    if (channel === undefined) {
+      return;
+    }
+
     const noteInfo = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity)
 
     if (!noteInfo) {
-      console.warn('note is not found')
       return
     }
 
@@ -129,7 +134,7 @@ export default class Synthesizer implements Listener {
     // note on
     const note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey)
     note.noteOn()
-    channel.currentNoteOn.push(note)
+    this.channels[channelNumber].currentNoteOn.push(note)
   }
 
   noteOff(channelNumber: number, key: number, _velocity: number) {
@@ -138,6 +143,10 @@ export default class Synthesizer implements Listener {
     }
     const bankNumber = this.getBank(channelNumber);
     const channel = this.channels[channelNumber]
+
+    if (channel === undefined) {
+      return;
+    }
 
     const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key)
 
@@ -226,8 +235,13 @@ export default class Synthesizer implements Listener {
     this.channels[channelNumber].reverb = depth
   }
 
-  getBank(channelNumber: number) {
+  private getBank(channelNumber: number) {
     let bankIndex = 0;
+    const channel = this.channels[channelNumber];
+
+    if (channel === undefined) {
+      return;
+    }
 
     if (channelNumber === 9) {
       this.setPercussionPart(9, true);
@@ -236,13 +250,13 @@ export default class Synthesizer implements Listener {
 
     if (this.isXG) {
       // XG音源は、MSB→LSBの優先順でバンクセレクトをする。
-      if (this.channels[channelNumber].bankMsb === 64) {
+      if (channel.bankMsb === 64) {
         // Bank Select MSB #64 (Voice Type: SFX)
         bankIndex = 125;
-      } else if (this.channels[channelNumber].bankMsb === 126 || this.channels[channelNumber].bankMsb === 127) {
+      } else if (channel.bankMsb === 126 || channel.bankMsb === 127) {
         // Bank Select MSB #126 (Voice Type: Drum)
         // Bank Select MSB #127 (Voice Type: Drum)
-        bankIndex = this.channels[channelNumber].bankMsb;
+        bankIndex = channel.bankMsb;
       } else {
         // Bank Select MSB #0 (Voice Type: Normal)
         // TODO:本来こちらが正しいが、バンクに存在しない楽器の処理ができていないためコメントアウト
@@ -253,7 +267,7 @@ export default class Synthesizer implements Listener {
       // GS音源
       bankIndex = 0;
 
-      if (this.channels[channelNumber].isPercussionPart) {
+      if (channel.isPercussionPart) {
         // http://www.roland.co.jp/support/by_product/sd-20/knowledge_base/1826700/
         bankIndex = 128;
       } else {

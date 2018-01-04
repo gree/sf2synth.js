@@ -107,7 +107,7 @@ export default class SynthesizerNote {
     // panpot
     // TODO: ドラムパートのPanが変化した場合、その計算をしなければならない
     // http://cpansearch.perl.org/src/PJB/MIDI-SoundFont-1.08/doc/sfspec21.html#8.4.6
-    const pan = noteInfo.pan ? noteInfo.pan / 10 : this.panpot;
+    const pan = noteInfo.pan ? noteInfo.pan / 120 : this.panpot;
     const panner = this.panner = ctx.createPanner()
     panner.panningModel = "equalpower"
     panner.setPosition(
@@ -119,7 +119,6 @@ export default class SynthesizerNote {
     //---------------------------------------------------------------------------
     // Delay, Attack, Hold, Decay, Sustain
     //---------------------------------------------------------------------------
-
     let attackVolume = this.volume * (this.velocity / 127) * (1 - noteInfo.initialAttenuation / 1000);
     if (attackVolume < 0) {
       attackVolume = 0;

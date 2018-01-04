@@ -64,7 +64,9 @@ var SynthesizerNote = /** @class */ (function () {
         filter.type = "lowpass";
         this.filter = filter;
         // panpot
-        var pan = noteInfo.panpot !== void 0 ? noteInfo.panpot : this.panpot;
+        // TODO: ドラムパートのPanが変化した場合、その計算をしなければならない
+        // http://cpansearch.perl.org/src/PJB/MIDI-SoundFont-1.08/doc/sfspec21.html#8.4.6
+        var pan = noteInfo.pan ? noteInfo.pan / 120 : this.panpot;
         var panner = this.panner = ctx.createPanner();
         panner.panningModel = "equalpower";
         panner.setPosition(Math.sin(pan * Math.PI / 2), 0, Math.cos(pan * Math.PI / 2));
@@ -124,7 +126,7 @@ var SynthesizerNote = /** @class */ (function () {
         var _a = this, noteInfo = _a.noteInfo, bufferSource = _a.bufferSource;
         var output = this.gainOutput;
         var now = this.ctx.currentTime;
-        var release = 64;
+        var release = noteInfo.releaseTime - 64;
         //---------------------------------------------------------------------------
         // volume release time
         //---------------------------------------------------------------------------
@@ -819,8 +821,9 @@ var SoundFont = /** @class */ (function () {
             initialFilterQ: gen.initialFilterQ,
             initialAttenuation: gen.initialAttenuation,
             freqVibLFO: gen.freqVibLFO ? convertTime(gen.freqVibLFO) * 8.176 : undefined,
-            panpot: gen.panpot,
-            mute: false
+            pan: gen.pan,
+            mute: false,
+            releaseTime: gen.releaseTime
         };
     };
     // presetNames[bankNumber][presetNumber] = presetName
@@ -923,7 +926,8 @@ function createInstrumentZone(instrumentGenerators) {
         overridingRootKey: getValue("overridingRootKey"),
         initialFilterQ: getValue("initialFilterQ"),
         initialFilterFc: getValue("initialFilterFc"),
-        sampleModes: getValue("sampleModes")
+        sampleModes: getValue("sampleModes"),
+        pan: getValue("pan")
     };
 }
 var defaultInstrumentZone = {
@@ -961,9 +965,9 @@ var defaultInstrumentZone = {
     initialFilterQ: 1,
     initialFilterFc: 13500,
     sampleModes: 0,
-    panpot: 64,
     mute: false,
-    releaseTime: 0
+    releaseTime: 64,
+    pan: undefined
 };
 
 var BASE_VOLUME = 0.4;
@@ -990,39 +994,30 @@ var Channel = /** @class */ (function () {
 }());
 var Synthesizer = /** @class */ (function () {
     function Synthesizer(ctx) {
-        this.bank = 0;
         this.bufferSize = 1024;
         this.channels = [];
         this.masterVolume = 1.0;
-        this.releaseTime = function (channel, releaseTime) {
-            this.channelRelease[channel] = releaseTime;
-        };
-        /**
-         * @param {number} channel TODO:ドラムパートとしてセットするチャンネル
-         * @param {boolean} sw ドラムか通常かのスイッチ
-         */
-        this.setPercussionPart = function (channelNumber, sw) {
-            this.channels[channelNumber].isPercussionPart = sw;
-        };
         this.ctx = ctx;
         this.gainMaster = this.ctx.createGain();
         this.setMasterVolume(this.masterVolume);
         this.init();
     }
     Synthesizer.prototype.init = function () {
+        this.channels = [];
         for (var i = 0; i < 16; ++i) {
             this.channels.push(new Channel());
-            this.programChange(i, i !== 9 ? i : 0);
+            this.programChange(i, 0x00);
             this.volumeChange(i, 0x64);
             this.panpotChange(i, 0x40);
             this.pitchBend(i, 0);
             this.pitchBendSensitivity(i, 2);
             this.hold(i, false);
-            this.expression(i, 127);
-            this.bankSelectMsb(i, i === 9 ? 128 : 0x00);
+            this.expression(i, 0x7f);
+            this.bankSelectMsb(i, i === 9 ? 0x80 : 0x00);
             this.bankSelectLsb(i, 0x00);
             this.setPercussionPart(i, i === 9);
-            this.setReverbDepth(i, 40);
+            this.releaseTime(i, 0x40);
+            this.setReverbDepth(i, 0x28);
         }
     };
     Synthesizer.prototype.loadSoundFont = function (input) {
@@ -1033,20 +1028,24 @@ var Synthesizer = /** @class */ (function () {
         this.gainMaster.connect(destination);
     };
     Synthesizer.prototype.setMasterVolume = function (volume) {
+        var vol = BASE_VOLUME * volume / 0x8000;
         this.masterVolume = volume;
-        //this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
-        this.gainMaster.gain.setTargetAtTime(BASE_VOLUME * volume / 0x8000, this.ctx.currentTime, 0.015);
+        if (vol) {
+            //this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
+            this.gainMaster.gain.setTargetAtTime(BASE_VOLUME * volume / 0x8000, this.ctx.currentTime, 0.015);
+        }
     };
     Synthesizer.prototype.noteOn = function (channelNumber, key, velocity) {
         if (!this.soundFont) {
-            console.warn('could not load sound.');
             return;
         }
         var bankNumber = this.getBank(channelNumber);
         var channel = this.channels[channelNumber];
+        if (channel === undefined) {
+            return;
+        }
         var noteInfo = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity);
         if (!noteInfo) {
-            console.warn('note is not found');
             return;
         }
         var panpot = channel.panpot - 64;
@@ -1083,7 +1082,7 @@ var Synthesizer = /** @class */ (function () {
         // note on
         var note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey);
         note.noteOn();
-        channel.currentNoteOn.push(note);
+        this.channels[channelNumber].currentNoteOn.push(note);
     };
     Synthesizer.prototype.noteOff = function (channelNumber, key, _velocity) {
         if (!this.soundFont) {
@@ -1091,6 +1090,9 @@ var Synthesizer = /** @class */ (function () {
         }
         var bankNumber = this.getBank(channelNumber);
         var channel = this.channels[channelNumber];
+        if (channel === undefined) {
+            return;
+        }
         var instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key);
         if (!instrumentKey) {
             return;
@@ -1144,6 +1146,9 @@ var Synthesizer = /** @class */ (function () {
     Synthesizer.prototype.pitchBendSensitivity = function (channelNumber, sensitivity) {
         this.channels[channelNumber].pitchBendSensitivity = sensitivity;
     };
+    Synthesizer.prototype.releaseTime = function (channelNumber, releaseTime) {
+        this.channels[channelNumber].releaseTime = releaseTime;
+    };
     Synthesizer.prototype.allSoundOff = function (channelNumber) {
         var currentNoteOn = this.channels[channelNumber].currentNoteOn;
         while (currentNoteOn.length > 0) {
@@ -1158,20 +1163,24 @@ var Synthesizer = /** @class */ (function () {
     };
     Synthesizer.prototype.getBank = function (channelNumber) {
         var bankIndex = 0;
+        var channel = this.channels[channelNumber];
+        if (channel === undefined) {
+            return;
+        }
         if (channelNumber === 9) {
             this.setPercussionPart(9, true);
             return this.isXG ? 127 : 128;
         }
         if (this.isXG) {
             // XG音源は、MSB→LSBの優先順でバンクセレクトをする。
-            if (this.channels[channelNumber].bankMsb === 64) {
+            if (channel.bankMsb === 64) {
                 // Bank Select MSB #64 (Voice Type: SFX)
                 bankIndex = 125;
             }
-            else if (this.channels[channelNumber].bankMsb === 126 || this.channels[channelNumber].bankMsb === 127) {
+            else if (channel.bankMsb === 126 || channel.bankMsb === 127) {
                 // Bank Select MSB #126 (Voice Type: Drum)
                 // Bank Select MSB #127 (Voice Type: Drum)
-                bankIndex = this.channels[channelNumber].bankMsb;
+                bankIndex = channel.bankMsb;
             }
             else {
                 // Bank Select MSB #0 (Voice Type: Normal)
@@ -1183,7 +1192,7 @@ var Synthesizer = /** @class */ (function () {
         else if (this.isGS) {
             // GS音源
             bankIndex = 0;
-            if (this.channels[channelNumber].isPercussionPart) {
+            if (channel.isPercussionPart) {
                 // http://www.roland.co.jp/support/by_product/sd-20/knowledge_base/1826700/
                 bankIndex = 128;
             }
@@ -1202,14 +1211,16 @@ var Synthesizer = /** @class */ (function () {
         //}
         return bankIndex;
     };
-    
+    Synthesizer.prototype.setPercussionPart = function (channelNumber, sw) {
+        this.channels[channelNumber].isPercussionPart = sw;
+    };
     return Synthesizer;
 }());
 
 var ProgramNames = {
     /**
      * GM Synth set
-     * http://amei.or.jp/specifications/GM2_japanese.pdf
+     * http://amei.or.jp/midistandardcommittee/Recommended_Practice/GM2_japanese.pdf
      */
     0: [
         "Acoustic Piano",
@@ -1401,78 +1412,7 @@ var ProgramNames = {
         null,
         null,
         null,
-        "SFX Set",
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        "(CM-64/CM-32L)"
+        "SFX Set"
     ]
 };
 
@@ -1504,15 +1444,13 @@ function renderProgramOptions(programNames, bank) {
 function renderInstrument(program) {
     return render("\n    <div class=\"instrument\">\n      <div class=\"program\">" + program + "</div>\n      <div class=\"volume\"></div>\n      <div class=\"panpot\"></div>\n      <div class=\"pitchBend\"></div>\n      <div class=\"pitchBendSensitivity\"></div>\n      <div class=\"keys\">" + renderKeys() + "</div>\n    </div>\n  ");
 }
-function objectMap(o, func) {
+function programNamesFromBankSet(bankSet) {
+    //return objectMap(bankSet, bank => objectMap(bank, s => s.name))
     var result = {};
-    Object.keys(o).forEach(function (key) {
-        result[key] = func(o[key]);
+    Object.keys(bankSet).forEach(function (no) {
+        result[no] = bankSet[no];
     });
     return result;
-}
-function programNamesFromBankSet(bankSet) {
-    return objectMap(bankSet, function (bank) { return objectMap(bank, function (s) { return s.name; }); });
 }
 function mergeProgramNames(left, right) {
     function mergedKeys(a, b) {
@@ -1670,6 +1608,10 @@ var View = /** @class */ (function () {
     };
     View.prototype.resetAllControl = function (_channelNumber) {
     };
+    View.prototype.init = function () {
+    };
+    View.prototype.expression = function (_value) {
+    };
     return View;
 }());
 
@@ -1681,7 +1623,7 @@ var MidiMessageHandler = /** @class */ (function () {
     MidiMessageHandler.prototype.processMidiMessage = function (message) {
         var channel = message[0] & 0x0f;
         var listener = this.listener;
-        if (!listener) {
+        if (listener === undefined) {
             return;
         }
         switch (message[0] & 0xf0) {
@@ -1735,25 +1677,25 @@ var MidiMessageHandler = /** @class */ (function () {
                         this.RpnLsb[channel] = message[2];
                         break;
                     case 0x40:// Hold
-                        //listener.hold(channel, message[2]);
+                        listener.hold(channel, message[2] !== 0);
                         break;
                     case 0x0b:// Expression
                         listener.expression(channel, message[2]);
                         break;
                     case 0x47:// Cutoff Fequency (Brightness)
-                        //listener.cutOffFrequency[channel] = message[2];
+                        // listener.cutOffFrequency[channel] = message[2];
                         break;
                     case 0x48:// DecayTyme
-                        //          synth.decayTime[channel] = value;
+                        // synth.decayTime[channel] = value;
                         break;
                     case 0x49:// ReleaseTime
-                        //listener.releaseTime(channel, message[2]);
+                        listener.releaseTime(channel, message[2]);
                         break;
                     case 0x4A:// Hermonic Content (Resonance)
-                        //listener.harmonicContent[channel] = message[2];
+                        // listener.harmonicContent[channel] = message[2];
                         break;
                     case 0x5B:// Effect1 Depth（Reverb Send Level）
-                        //listener.reverbDepth[channel] = message[2];
+                        listener.setReverbDepth(channel, message[2]);
                         break;
                     default:
                 }
@@ -1906,6 +1848,9 @@ var WebMidiLink = /** @class */ (function () {
         this.ready = false;
         this.midiMessageHandler = new MidiMessageHandler();
         this.target = document.body.querySelector(target);
+        if (!this.target) {
+            throw "Target DOM is not found.";
+        }
         if (window.opener) {
             this.wml = window.opener;
         }
@@ -1933,12 +1878,14 @@ var WebMidiLink = /** @class */ (function () {
     WebMidiLink.prototype.load = function (url) {
         var xhr = new XMLHttpRequest();
         var progress = this.target.appendChild(document.createElement('progress'));
+        var percentage = progress.parentNode.insertBefore(document.createElement('outpout'), progress.nextElementSibling);
         xhr.open('GET', url, true);
         xhr.responseType = 'arraybuffer';
         xhr.addEventListener('load', function (ev) {
             var xhr = ev.target;
             this.onload(xhr.response);
-            this.target.removeChild(this.target.firstChild);
+            this.target.removeChild(progress);
+            this.target.removeChild(percentage);
             if (typeof this.loadCallback === 'function') {
                 this.loadCallback(xhr.response);
             }
@@ -1946,6 +1893,7 @@ var WebMidiLink = /** @class */ (function () {
         xhr.addEventListener('progress', function (e) {
             progress.max = e.total;
             progress.value = e.loaded;
+            percentage.innerText = (e.loaded / e.total) / 100 + ' %';
             // NOTE: This message is not compliant of WebMidiLink.
             if (this.wml)
                 this.wml.postMessage('link,progress,' + e.loaded + ',' + e.total, '*');

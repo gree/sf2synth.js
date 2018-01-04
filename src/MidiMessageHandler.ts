@@ -1,3 +1,4 @@
+import Synthesizer from "./Synthesizer"
 export interface Listener {
   init()
   noteOn(channel: number, key: number, velocity: number)
@@ -28,10 +29,9 @@ export default class MidiMessageHandler {
     const channel = message[0] & 0x0f
     const { listener } = this
 
-    if (!listener) {
+    if (listener === undefined) {
       return
     }
-
     switch (message[0] & 0xf0) {
       case 0x80: // NoteOff: 8n kk vv
         listener.noteOff(channel, message[1], message[2])
