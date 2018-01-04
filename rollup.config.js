@@ -6,11 +6,12 @@ function create(name) {
     name: `SoundFont`,
     input: `export/${name}.ts`,
     plugins: [
-      typescript({ typescript: require("typescript") })
+      typescript({
+        typescript: require("typescript")
+      })
     ],
-    output: [
-      {
-        file: `public/js/sf2.${name}.js`,  
+    output: [{
+        file: `public/js/sf2.${name}.js`,
         format: "umd",
       },
       {
@@ -26,4 +27,4 @@ export default [
   create("synth")
 ];
 
-serve('dist');
+serve('public');

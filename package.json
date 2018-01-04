@@ -14,7 +14,7 @@
   "dependencies": {},
   "devDependencies": {
     "@types/jest": "^21.1.9",
-    "@types/node": "^8.5.2",
+    "@types/node": "^8.5.5",
     "assert": "^1.4.1",
     "jest": "^22.0.4",
     "rollup": "^0.53.1",

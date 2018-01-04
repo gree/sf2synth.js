@@ -23,6 +23,7 @@ var SynthesizerNote = /** @class */ (function () {
         this.volume = instrument.volume;
         this.panpot = instrument.panpot;
         this.pitchBend = instrument.pitchBend;
+        this.expression = instrument.expression;
         this.pitchBendSensitivity = instrument.pitchBendSensitivity;
         this.startTime = ctx.currentTime;
         this.computedPlaybackRate = this.playbackRate;
@@ -37,80 +38,129 @@ var SynthesizerNote = /** @class */ (function () {
         // buffer source
         var bufferSource = ctx.createBufferSource();
         bufferSource.buffer = this.audioBuffer;
-        bufferSource.loop = (this.channel !== 9);
+        bufferSource.loop = this.sampleModes !== 0;
         bufferSource.loopStart = noteInfo.loopStart / noteInfo.sampleRate;
         bufferSource.loopEnd = noteInfo.loopEnd / noteInfo.sampleRate;
         bufferSource.onended = function () { return _this.disconnect(); };
         this.bufferSource = bufferSource;
         this.updatePitchBend(this.pitchBend);
         // audio node
-        var panner = this.panner = ctx.createPanner();
         var output = this.gainOutput = ctx.createGain();
         var outputGain = output.gain;
+        // expression
+        this.expressionGain = ctx.createGain();
+        //this.expressionGain.gain.value = this.expression / 127;
+        this.expressionGain.gain.setTargetAtTime(this.expression / 127, this.ctx.currentTime, 0.015);
+        // Modulator
+        var modulator = this.modulator = ctx.createBiquadFilter();
         // filter
         var filter = ctx.createBiquadFilter();
         filter.type = "lowpass";
         this.filter = filter;
         // panpot
+        var pan = noteInfo.panpot !== void 0 ? noteInfo.panpot : this.panpot;
+        var panner = this.panner = ctx.createPanner();
         panner.panningModel = "equalpower";
-        panner.setPosition(Math.sin(this.panpot * Math.PI / 2), 0, Math.cos(this.panpot * Math.PI / 2));
+        panner.setPosition(Math.sin(pan * Math.PI / 2), 0, Math.cos(pan * Math.PI / 2));
         //---------------------------------------------------------------------------
-        // Attack, Decay, Sustain
+        // Delay, Attack, Hold, Decay, Sustain
         //---------------------------------------------------------------------------
-        var now = this.ctx.currentTime;
-        var volAttackTime = now + noteInfo.volAttack;
-        var modAttackTime = now + noteInfo.modAttack;
-        var volDecay = volAttackTime + noteInfo.volDecay;
-        var modDecay = modAttackTime + noteInfo.modDecay;
-        var startTime = noteInfo.start / noteInfo.sampleRate;
-        var attackVolume = this.volume * (this.velocity / 127);
-        outputGain.setValueAtTime(0, now);
-        outputGain.linearRampToValueAtTime(attackVolume, volAttackTime);
-        outputGain.linearRampToValueAtTime(attackVolume * (1 - noteInfo.volSustain), volDecay);
-        filter.Q.setValueAtTime(noteInfo.initialFilterQ / 10, now);
-        var baseFreq = amountToFreq(noteInfo.initialFilterFc);
-        var peekFreq = amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
-        var sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - noteInfo.modSustain);
-        filter.frequency.setValueAtTime(baseFreq, now);
-        filter.frequency.linearRampToValueAtTime(peekFreq, modAttackTime);
-        filter.frequency.linearRampToValueAtTime(sustainFreq, modDecay);
-        function amountToFreq(val) {
-            return Math.pow(2, (val - 6900) / 1200) * 440;
+        var attackVolume = this.volume * (this.velocity / 127) * (1 - noteInfo.initialAttenuation / 1000);
+        if (attackVolume < 0) {
+            attackVolume = 0;
         }
+        var now = this.ctx.currentTime;
+        var volDelay = now + noteInfo.volDelay;
+        var volAttack = volDelay + noteInfo.volAttack;
+        var volHold = volAttack + noteInfo.volHold;
+        var volDecay = volHold + noteInfo.volDecay;
+        var modDelay = now + noteInfo.modDelay;
+        var modAttack = volDelay + noteInfo.modAttack;
+        var modHold = modAttack + noteInfo.modHold;
+        var modDecay = modHold + noteInfo.modDecay;
+        var startTime = noteInfo.start / noteInfo.sampleRate;
+        // volume envelope
+        outputGain
+            .setValueAtTime(0, now)
+            .setValueAtTime(0, volDelay)
+            .setTargetAtTime(attackVolume, volDelay, noteInfo.volAttack)
+            .setValueAtTime(attackVolume, volHold)
+            .linearRampToValueAtTime(attackVolume * (1 - noteInfo.volSustain), volDecay);
+        // modulation envelope
+        var baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
+        var peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
+        var sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - noteInfo.modSustain);
+        modulator.Q.setValueAtTime(Math.pow(10, noteInfo.initialFilterQ / 200), now);
+        //modulator.frequency.value = baseFreq;
+        modulator.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.015);
+        modulator.type = 'lowpass';
+        modulator.frequency
+            .setValueAtTime(baseFreq, now)
+            .setValueAtTime(baseFreq, modDelay)
+            .setTargetAtTime(peekFreq, modDelay, noteInfo.modAttack++) // For FireFox fix
+            .setValueAtTime(peekFreq, modHold)
+            .linearRampToValueAtTime(sustainFreq, modDecay);
         // connect
-        bufferSource.connect(filter);
-        filter.connect(panner);
-        panner.connect(output);
-        output.connect(this.destination);
+        bufferSource.connect(modulator);
+        modulator.connect(panner);
+        panner.connect(this.expressionGain);
+        this.expressionGain.connect(output);
+        if (!noteInfo.mute) {
+            this.gainOutput.connect(this.destination);
+        }
         // fire
         bufferSource.start(0, startTime);
+    };
+    SynthesizerNote.prototype.amountToFreq = function (val) {
+        return Math.pow(2, (val - 6900) / 1200) * 440;
     };
     SynthesizerNote.prototype.noteOff = function () {
         var _a = this, noteInfo = _a.noteInfo, bufferSource = _a.bufferSource;
         var output = this.gainOutput;
         var now = this.ctx.currentTime;
-        var volEndTime = now + noteInfo.volRelease;
-        var modEndTime = now + noteInfo.modRelease;
-        if (!this.audioBuffer) {
-            return;
-        }
-        // ignore note off for rhythm track
-        if (this.channel === 9) {
-            return;
-        }
+        var release = 64;
+        //---------------------------------------------------------------------------
+        // volume release time
+        //---------------------------------------------------------------------------
+        var volEndTimeTmp = noteInfo.volRelease * output.gain.value;
+        var volEndTime = now + (volEndTimeTmp * (1 + release / (release < 0 ? 64 : 63)));
+        //---------------------------------------------------------------------------
+        // modulation release time
+        //---------------------------------------------------------------------------
+        var modulator = this.modulator;
+        var baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
+        var peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
+        var modEndTime = now + noteInfo.modRelease *
+            (baseFreq === peekFreq ?
+                1 :
+                (modulator.frequency.value - baseFreq) / (peekFreq - baseFreq));
         //---------------------------------------------------------------------------
         // Release
         //---------------------------------------------------------------------------
-        output.gain.cancelScheduledValues(0);
-        output.gain.linearRampToValueAtTime(0, volEndTime);
-        bufferSource.playbackRate.cancelScheduledValues(0);
-        bufferSource.playbackRate.linearRampToValueAtTime(this.computedPlaybackRate, modEndTime);
-        bufferSource.loop = false;
-        bufferSource.stop(volEndTime);
+        switch (noteInfo.sampleModes) {
+            case 0:
+                break;
+            case 1:
+                output.gain.cancelScheduledValues(0);
+                output.gain.setValueAtTime(output.gain.value, now);
+                output.gain.linearRampToValueAtTime(0, volEndTime);
+                modulator.frequency.cancelScheduledValues(0);
+                modulator.frequency.setValueAtTime(modulator.frequency.value, now);
+                modulator.frequency.linearRampToValueAtTime(baseFreq, modEndTime);
+                bufferSource.playbackRate.cancelScheduledValues(0);
+                bufferSource.playbackRate.setValueAtTime(bufferSource.playbackRate.value, now);
+                bufferSource.playbackRate.linearRampToValueAtTime(this.computedPlaybackRate, modEndTime);
+                bufferSource.stop(volEndTime);
+                break;
+            case 2:
+                console.log('detect unused sampleModes');
+                break;
+            case 3:
+                bufferSource.loop = false;
+                break;
+        }
     };
     SynthesizerNote.prototype.disconnect = function () {
-        this.bufferSource.disconnect(0);
-        this.panner.disconnect(0);
         this.gainOutput.disconnect(0);
     };
     SynthesizerNote.prototype.schedulePlaybackRate = function () {
@@ -126,6 +176,10 @@ var SynthesizerNote = /** @class */ (function () {
         playbackRate.linearRampToValueAtTime(peekPitch, modAttack);
         playbackRate.linearRampToValueAtTime(computed + (peekPitch - computed) * (1 - noteInfo.modSustain), modDecay);
     };
+    SynthesizerNote.prototype.updateExpression = function (expression) {
+        this.expressionGain.gain.value = (this.expression = expression) / 127;
+    };
+    
     SynthesizerNote.prototype.updatePitchBend = function (pitchBend) {
         this.computedPlaybackRate = this.playbackRate * Math.pow(Math.pow(2, 1 / 12), (this.pitchBendSensitivity * (pitchBend / (pitchBend < 0 ? 8192 : 8191))) * this.noteInfo.scaleTuning);
         this.schedulePlaybackRate();
@@ -280,6 +334,7 @@ var GeneratorEnumeratorTable = [
     'exclusiveClass',
     'overridingRootKey'
 ];
+//# sourceMappingURL=Constants.js.map
 
 var VersionTag = /** @class */ (function () {
     function VersionTag() {
@@ -637,11 +692,8 @@ function loadSample(sampleHeader, samplingDataOffset, data) {
         return sample;
     });
 }
+//# sourceMappingURL=Parser.js.map
 
-/**
- * Parser で読み込んだサウンドフォントのデータを
- * Synthesizer から利用しやすい形にするクラス
- */
 var SoundFont = /** @class */ (function () {
     function SoundFont(parsed) {
         this.parsed = parsed;
@@ -730,23 +782,10 @@ var SoundFont = /** @class */ (function () {
             sample: sample,
             sampleRate: sampleHeader.sampleRate,
             sampleName: sampleHeader.sampleName,
-            scaleTuning: scaleTuning,
+            sampleModes: gen.sampleModes,
             playbackRate: function (key) { return Math.pow(Math.pow(2, 1 / 12), (key + basePitch) * scaleTuning); },
-            keyRange: gen.keyRange,
-            velRange: gen.velRange,
-            volAttack: convertTime(gen.volAttack),
-            volDecay: convertTime(gen.volDecay),
-            volSustain: gen.volSustain / 1000,
-            volRelease: convertTime(gen.volRelease),
-            modAttack: convertTime(gen.modAttack),
-            modDecay: convertTime(gen.modDecay),
-            modSustain: gen.modSustain / 1000,
-            modRelease: convertTime(gen.modRelease),
             modEnvToPitch: gen.modEnvToPitch / 100,
-            modEnvToFilterFc: gen.modEnvToFilterFc,
-            initialFilterQ: gen.initialFilterQ,
-            initialFilterFc: gen.initialFilterFc,
-            freqVibLFO: gen.freqVibLFO ? convertTime(gen.freqVibLFO) * 8.176 : undefined,
+            scaleTuning: scaleTuning,
             start: gen.startAddrsCoarseOffset * 32768 + gen.startAddrsOffset,
             end: gen.endAddrsCoarseOffset * 32768 + gen.endAddrsOffset,
             loopStart: (sampleHeader.loopStart +
@@ -754,7 +793,28 @@ var SoundFont = /** @class */ (function () {
                 gen.startloopAddrsOffset),
             loopEnd: (sampleHeader.loopEnd +
                 gen.endloopAddrsCoarseOffset * 32768 +
-                gen.endloopAddrsOffset)
+                gen.endloopAddrsOffset),
+            volDelay: convertTime(gen.volDelay),
+            volAttack: convertTime(gen.volAttack),
+            volHold: convertTime(gen.volHold),
+            volDecay: convertTime(gen.volDecay),
+            volSustain: gen.volSustain / 1000,
+            volRelease: convertTime(gen.volRelease),
+            modDelay: convertTime(gen.modDelay),
+            modAttack: convertTime(gen.modAttack),
+            modHold: convertTime(gen.modHold),
+            modDecay: convertTime(gen.modDecay),
+            modSustain: gen.modSustain / 1000,
+            modRelease: convertTime(gen.modRelease),
+            keyRange: gen.keyRange,
+            velRange: gen.velRange,
+            initialFilterFc: gen.initialFilterFc,
+            modEnvToFilterFc: gen.modEnvToFilterFc,
+            initialFilterQ: gen.initialFilterQ,
+            initialAttenuation: gen.initialAttenuation,
+            freqVibLFO: gen.freqVibLFO ? convertTime(gen.freqVibLFO) * 8.176 : undefined,
+            panpot: gen.panpot,
+            mute: false
         };
     };
     // presetNames[bankNumber][presetNumber] = presetName
@@ -831,10 +891,12 @@ function createInstrumentZone(instrumentGenerators) {
         sampleID: sampleID,
         volAttack: getValue("attackVolEnv"),
         volDecay: getValue("decayVolEnv"),
+        volDelay: getValue("delayVolEnv"),
         volSustain: getValue("sustainVolEnv"),
         volRelease: getValue("releaseVolEnv"),
         modAttack: getValue("attackModEnv"),
         modDecay: getValue("decayModEnv"),
+        modDelay: getValue("delayModEnv"),
         modSustain: getValue("sustainModEnv"),
         modRelease: getValue("releaseModEnv"),
         modEnvToPitch: getValue("modEnvToPitch"),
@@ -850,24 +912,30 @@ function createInstrumentZone(instrumentGenerators) {
         startloopAddrsOffset: getValue("startloopAddrsOffset"),
         startloopAddrsCoarseOffset: getValue("startloopAddrsCoarseOffset"),
         endloopAddrsOffset: getValue("endloopAddrsOffset"),
+        initialAttenuation: getValue("initialAttenuation"),
         endloopAddrsCoarseOffset: getValue("endloopAddrsCoarseOffset"),
         overridingRootKey: getValue("overridingRootKey"),
         initialFilterQ: getValue("initialFilterQ"),
-        initialFilterFc: getValue("initialFilterFc")
+        initialFilterFc: getValue("initialFilterFc"),
+        sampleModes: getValue("sampleModes")
     };
 }
 var defaultInstrumentZone = {
     keyRange: new RangeValue(0, 127),
     velRange: new RangeValue(0, 127),
     sampleID: undefined,
+    volDelay: -12000,
     volAttack: -12000,
     volDecay: -12000,
+    volHold: -12000,
     volSustain: 0,
     volRelease: -12000,
+    modDelay: -12000,
     modAttack: -12000,
+    modHold: -12000,
     modDecay: -12000,
     modSustain: 0,
-    modRelease: 0,
+    modRelease: -12000,
     modEnvToPitch: 0,
     modEnvToFilterFc: 0,
     coarseTune: 0,
@@ -880,11 +948,16 @@ var defaultInstrumentZone = {
     endAddrsCoarseOffset: 0,
     startloopAddrsOffset: 0,
     startloopAddrsCoarseOffset: 0,
+    initialAttenuation: 0,
     endloopAddrsOffset: 0,
     endloopAddrsCoarseOffset: 0,
     overridingRootKey: undefined,
     initialFilterQ: 1,
-    initialFilterFc: 13500
+    initialFilterFc: 13500,
+    sampleModes: 0,
+    panpot: 64,
+    mute: false,
+    releaseTime: 0
 };
 
 var BASE_VOLUME = 0.4;
@@ -895,7 +968,17 @@ var Channel = /** @class */ (function () {
         this.pitchBend = 0;
         this.pitchBendSensitivity = 0;
         this.panpot = 0;
+        this.expression = 0;
+        this.releaseTime = 0;
+        this.reverb = 0;
         this.currentNoteOn = [];
+        this.hold = false;
+        this.bankMsb = 0;
+        this.bankLsb = 0;
+        this.isPercussionPart = false;
+        this.harmonicContent = 0;
+        this.cutOffFrequency = 0;
+        this.mute = false;
     }
     return Channel;
 }());
@@ -905,6 +988,16 @@ var Synthesizer = /** @class */ (function () {
         this.bufferSize = 1024;
         this.channels = [];
         this.masterVolume = 1.0;
+        this.releaseTime = function (channel, releaseTime) {
+            this.channelRelease[channel] = releaseTime;
+        };
+        /**
+         * @param {number} channel TODO:ドラムパートとしてセットするチャンネル
+         * @param {boolean} sw ドラムか通常かのスイッチ
+         */
+        this.setPercussionPart = function (channelNumber, sw) {
+            this.channels[channelNumber].isPercussionPart = sw;
+        };
         this.ctx = ctx;
         this.gainMaster = this.ctx.createGain();
         this.setMasterVolume(this.masterVolume);
@@ -918,6 +1011,12 @@ var Synthesizer = /** @class */ (function () {
             this.panpotChange(i, 0x40);
             this.pitchBend(i, 0);
             this.pitchBendSensitivity(i, 2);
+            this.hold(i, false);
+            this.expression(i, 127);
+            this.bankSelectMsb(i, i === 9 ? 128 : 0x00);
+            this.bankSelectLsb(i, 0x00);
+            this.setPercussionPart(i, i === 9);
+            this.setReverbDepth(i, 40);
         }
     };
     Synthesizer.prototype.loadSoundFont = function (input) {
@@ -929,16 +1028,19 @@ var Synthesizer = /** @class */ (function () {
     };
     Synthesizer.prototype.setMasterVolume = function (volume) {
         this.masterVolume = volume;
-        this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000;
+        //this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
+        this.gainMaster.gain.setTargetAtTime(BASE_VOLUME * volume / 0x8000, this.ctx.currentTime, 0.015);
     };
     Synthesizer.prototype.noteOn = function (channelNumber, key, velocity) {
         if (!this.soundFont) {
+            console.warn('could not load sound.');
             return;
         }
-        var bankNumber = channelNumber === 9 ? 128 : this.bank;
+        var bankNumber = this.getBank(channelNumber);
         var channel = this.channels[channelNumber];
         var noteInfo = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity);
         if (!noteInfo) {
+            console.warn('note is not found');
             return;
         }
         var panpot = channel.panpot - 64;
@@ -951,8 +1053,27 @@ var Synthesizer = /** @class */ (function () {
             panpot: panpot,
             volume: channel.volume / 127,
             pitchBend: channel.pitchBend,
-            pitchBendSensitivity: channel.pitchBendSensitivity
+            expression: channel.expression,
+            pitchBendSensitivity: channel.pitchBendSensitivity,
+            mute: channel.mute,
+            releaseTime: channel.releaseTime,
+            cutOffFrequency: channel.cutOffFrequency,
+            harmonicContent: channel.harmonicContent
         };
+        // percussion
+        if (channel.isPercussionPart) {
+            if (key === 42 || key === 44) {
+                // 42: Closed Hi-Hat
+                // 44: Pedal Hi-Hat
+                // 46: Open Hi-Hat
+                this.noteOff(channelNumber, 46, 0);
+            }
+            if (key === 80) {
+                // 80: Mute Triangle
+                // 81: Open Triangle
+                this.noteOff(channelNumber, 81, 0);
+            }
+        }
         // note on
         var note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey);
         note.noteOn();
@@ -962,7 +1083,7 @@ var Synthesizer = /** @class */ (function () {
         if (!this.soundFont) {
             return;
         }
-        var bankNumber = channelNumber === 9 ? 128 : this.bank;
+        var bankNumber = this.getBank(channelNumber);
         var channel = this.channels[channelNumber];
         var instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key);
         if (!instrumentKey) {
@@ -979,12 +1100,29 @@ var Synthesizer = /** @class */ (function () {
             }
         }
     };
+    Synthesizer.prototype.hold = function (channelNumber, value) {
+        this.channels[channelNumber].hold = value;
+    };
+    Synthesizer.prototype.bankSelectMsb = function (channelNumber, value) {
+        this.channels[channelNumber].bankMsb = value;
+    };
+    Synthesizer.prototype.bankSelectLsb = function (channelNumber, value) {
+        this.channels[channelNumber].bankLsb = value;
+    };
     Synthesizer.prototype.programChange = function (channelNumber, instrument) {
         this.channels[channelNumber].instrument = instrument;
     };
     Synthesizer.prototype.volumeChange = function (channelNumber, volume) {
         this.channels[channelNumber].volume = volume;
     };
+    Synthesizer.prototype.expression = function (channelNumber, expression) {
+        var currentNoteOn = this.channels[channelNumber].currentNoteOn;
+        for (var i = 0, il = currentNoteOn.length; i < il; ++i) {
+            currentNoteOn[i].updateExpression(expression);
+        }
+        this.channels[channelNumber].expression = expression;
+    };
+    
     Synthesizer.prototype.panpotChange = function (channelNumber, panpot) {
         this.channels[channelNumber].panpot = panpot;
     };
@@ -1009,13 +1147,67 @@ var Synthesizer = /** @class */ (function () {
     Synthesizer.prototype.resetAllControl = function (channelNumber) {
         this.pitchBend(channelNumber, 0);
     };
+    Synthesizer.prototype.setReverbDepth = function (channelNumber, depth) {
+        this.channels[channelNumber].reverb = depth;
+    };
+    Synthesizer.prototype.getBank = function (channelNumber) {
+        var bankIndex = 0;
+        if (channelNumber === 9) {
+            this.setPercussionPart(9, true);
+            return this.isXG ? 127 : 128;
+        }
+        if (this.isXG) {
+            // XG音源は、MSB→LSBの優先順でバンクセレクトをする。
+            if (this.channels[channelNumber].bankMsb === 64) {
+                // Bank Select MSB #64 (Voice Type: SFX)
+                bankIndex = 125;
+            }
+            else if (this.channels[channelNumber].bankMsb === 126 || this.channels[channelNumber].bankMsb === 127) {
+                // Bank Select MSB #126 (Voice Type: Drum)
+                // Bank Select MSB #127 (Voice Type: Drum)
+                bankIndex = this.channels[channelNumber].bankMsb;
+            }
+            else {
+                // Bank Select MSB #0 (Voice Type: Normal)
+                // TODO:本来こちらが正しいが、バンクに存在しない楽器の処理ができていないためコメントアウト
+                //bankIndex = this.channelBankLsb[channel];  
+                bankIndex = 0;
+            }
+        }
+        else if (this.isGS) {
+            // GS音源
+            bankIndex = 0;
+            if (this.channels[channelNumber].isPercussionPart) {
+                // http://www.roland.co.jp/support/by_product/sd-20/knowledge_base/1826700/
+                bankIndex = 128;
+            }
+            else {
+                // TODO: XG音源前提なんで・・・
+                //bankIndex = this.channelBankMsb[channel];
+            }
+        }
+        else {
+            // GM音源の場合バンクセレクト無効化
+            bankIndex = 0;
+        }
+        //if (this.percussionPart[channel] && SoundFont.Instruments.PercussionProgramName[this.channelInstrument[channel]] === void 0) {
+        // パーカッションチャンネルで、GM に存在しないドラムセットが呼び出された時は、Standard Setを呼び出す。
+        //this.channelInstrument[channel] = 0;
+        //}
+        return bankIndex;
+    };
+    
     return Synthesizer;
 }());
 
 var ProgramNames = {
+    /**
+     * GM Synth set
+     * http://amei.or.jp/specifications/GM2_japanese.pdf
+     */
     0: [
         "Acoustic Piano",
-        "Bright Piano",
+        "Bright Acoustic Piano",
         "Electric Grand Piano",
         "Honky-tonk Piano",
         "Electric Piano",
@@ -1045,7 +1237,7 @@ var ProgramNames = {
         "Electric Guitar (muted)",
         "Overdriven Guitar",
         "Distortion Guitar",
-        "Guitar harmonics",
+        "Guitar Harmonics",
         "Acoustic Bass",
         "Electric Bass (finger)",
         "Electric Bass (pick)",
@@ -1102,7 +1294,7 @@ var ProgramNames = {
         "Lead 6 (voice)",
         "Lead 7 (fifths)",
         "Lead 8 (bass + lead)",
-        "Pad 1 (Fantasia)",
+        "Pad 1 (new age)",
         "Pad 2 (warm)",
         "Pad 3 (polysynth)",
         "Pad 4 (choir)",
@@ -1142,7 +1334,140 @@ var ProgramNames = {
         "Helicopter",
         "Applause",
         "Gunshot"
-    ], 128: ["Rhythm Track"]
+    ],
+    /**
+     * GM2 Drum Set List
+     */
+    128: [
+        "Standard Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Room Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Power Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Electronic Set",
+        "Analog Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Jazz Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Brush Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Orchestra Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "SFX Set",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "(CM-64/CM-32L)"
+    ]
 };
 
 function render(str) {
@@ -1164,6 +1489,8 @@ function renderProgramOptions(programNames, bank) {
     var names = programNames[bank];
     for (var i in names) {
         var name = names[i];
+        if (name == "None (None)")
+            continue;
         html += "<option value=\"" + i + "\">" + i + ": " + name + "</option>";
     }
     return "<select>" + html + "</select>";
@@ -1401,6 +1728,27 @@ var MidiMessageHandler = /** @class */ (function () {
                     case 0x65:// RPN LSB
                         this.RpnLsb[channel] = message[2];
                         break;
+                    case 0x40:// Hold
+                        //listener.hold(channel, message[2]);
+                        break;
+                    case 0x0b:// Expression
+                        listener.expression(channel, message[2]);
+                        break;
+                    case 0x47:// Cutoff Fequency (Brightness)
+                        //listener.cutOffFrequency[channel] = message[2];
+                        break;
+                    case 0x48:// DecayTyme
+                        //          synth.decayTime[channel] = value;
+                        break;
+                    case 0x49:// ReleaseTime
+                        //listener.releaseTime(channel, message[2]);
+                        break;
+                    case 0x4A:// Hermonic Content (Resonance)
+                        //listener.harmonicContent[channel] = message[2];
+                        break;
+                    case 0x5B:// Effect1 Depth（Reverb Send Level）
+                        //listener.reverbDepth[channel] = message[2];
+                        break;
                     default:
                 }
                 break;
@@ -1416,7 +1764,12 @@ var MidiMessageHandler = /** @class */ (function () {
                 // ID number
                 switch (message[1]) {
                     case 0x7e:// non-realtime
-                        // TODO
+                        // GM Reset: F0 7E 7F 09 01 F7
+                        if (message[2] === 0x7f && message[3] === 0x09 && message[4] === 0x01) {
+                            listener.isXG = false;
+                            listener.isGS = false;
+                            listener.init();
+                        }
                         break;
                     case 0x7f:// realtime
                         // const device = message[2]
@@ -1442,6 +1795,83 @@ var MidiMessageHandler = /** @class */ (function () {
                     default:
                         break;
                 }
+                // Vendor
+                switch (message[2]) {
+                    case 0x43:// Yamaha XG
+                        if (message[5] === 0x08) {
+                            // XG Dram Part: F0 43 [dev] 4C 08 [partNum] 07 [map] F7
+                            // but there is no file to use much this parameter...
+                            if (message[7] !== 0x00) {
+                                listener.setPercussionPart(message[6], true);
+                            }
+                            else {
+                                listener.setPercussionPart(message[6], false);
+                            }
+                            //goog.global.console.log(message);
+                        }
+                        switch (message[7]) {
+                            case 0x04:
+                                // XG Master Volume: F0 43 [dev] 4C 00 00 04 [value] F7
+                                listener.setMasterVolume((message[8] << 7) * 2);
+                                //console.log(message[8] << 7);
+                                break;
+                            case 0x7E:
+                                // XG Reset: F0 43 [dev] 4C 00 00 7E 00 F7
+                                listener.init();
+                                listener.isXG = true;
+                                break;
+                        }
+                        break;
+                    case 0x41:// Roland GS / TG300B Mode
+                        // TODO
+                        switch (message[8]) {
+                            case 0x04:
+                                // GS Master Volume: F0 41 [dev] 42 12 40 00 04 [value] 58 F7
+                                listener.setMasterVolume(message[9] << 7);
+                                break;
+                            case 0x7F:
+                                // GS Reset: F0 41 [dev] 42 12 40 00 7F 00 41 F7
+                                listener.init();
+                                listener.isGS = true;
+                                break;
+                            case 0x15:
+                                // GS Dram part: F0 41 [dev] 42 12 40 1[part no] [Map] [sum] F7
+                                // Notice: [sum] is ignroe in this program.
+                                // http://www.ssw.co.jp/dtm/drums/drsetup.htm
+                                // http://www.roland.co.jp/support/by_product/sd-20/knowledge_base/1826700/
+                                var part = message[7] - 0x0F;
+                                var map = message[8];
+                                if (part === 0) {
+                                    // 10 Ch.
+                                    if (map !== 0x00) {
+                                        listener.setPercussionPart(9, true);
+                                    }
+                                    else {
+                                        listener.setPercussionPart(9, false);
+                                    }
+                                }
+                                else if (part >= 10) {
+                                    // 1~9 Ch.
+                                    if (map !== 0x00) {
+                                        listener.setPercussionPart(part - 1, true);
+                                    }
+                                    else {
+                                        listener.setPercussionPart(part - 1, false);
+                                    }
+                                }
+                                else {
+                                    // 11~16 Ch.
+                                    if (map !== 0x00) {
+                                        listener.setPercussionPart(part, true);
+                                    }
+                                    else {
+                                        listener.setPercussionPart(part, false);
+                                    }
+                                }
+                                break;
+                        }
+                        break;
+                }
                 break;
             default:// not supported
                 break;
@@ -1462,11 +1892,23 @@ function delegateProxy(targets) {
         }
     });
 }
+//# sourceMappingURL=delegateProxy.js.map
 
 var WebMidiLink = /** @class */ (function () {
-    function WebMidiLink() {
+    function WebMidiLink(target) {
+        if (target === void 0) { target = ".synth"; }
         this.ready = false;
         this.midiMessageHandler = new MidiMessageHandler();
+        this.target = document.body.querySelector(target);
+        if (window.opener) {
+            this.wml = window.opener;
+        }
+        else if (window.parent !== window) {
+            this.wml = window.parent;
+        }
+        else {
+            this.wml = null;
+        }
         window.addEventListener('DOMContentLoaded', function () {
             this.ready = true;
         }.bind(this), false);
@@ -1484,14 +1926,23 @@ var WebMidiLink = /** @class */ (function () {
     };
     WebMidiLink.prototype.load = function (url) {
         var xhr = new XMLHttpRequest();
+        var progress = this.target.appendChild(document.createElement('progress'));
         xhr.open('GET', url, true);
         xhr.responseType = 'arraybuffer';
         xhr.addEventListener('load', function (ev) {
             var xhr = ev.target;
             this.onload(xhr.response);
+            this.target.removeChild(this.target.firstChild);
             if (typeof this.loadCallback === 'function') {
                 this.loadCallback(xhr.response);
             }
+        }.bind(this), false);
+        xhr.addEventListener('progress', function (e) {
+            progress.max = e.total;
+            progress.value = e.loaded;
+            // NOTE: This message is not compliant of WebMidiLink.
+            if (this.wml)
+                this.wml.postMessage('link,progress,' + e.loaded + ',' + e.total, '*');
         }.bind(this), false);
         xhr.send();
     };
@@ -1507,7 +1958,7 @@ var WebMidiLink = /** @class */ (function () {
             synth.connect(ctx.destination);
             synth.loadSoundFont(input);
             var view = this.view = new View();
-            document.body.querySelector(".synth").appendChild(view.draw(synth));
+            this.target.appendChild(view.draw(synth));
             this.midiMessageHandler.listener = delegateProxy([synth, view]);
             window.addEventListener('message', this.onmessage.bind(this), false);
         }
@@ -1516,12 +1967,8 @@ var WebMidiLink = /** @class */ (function () {
             synth.loadSoundFont(input);
         }
         // link ready
-        if (window.opener) {
-            window.opener.postMessage("link,ready", '*');
-        }
-        else if (window.parent !== window) {
-            window.parent.postMessage("link,ready", '*');
-        }
+        if (this.wml)
+            this.wml.postMessage("link,ready", '*');
     };
     WebMidiLink.prototype.onmessage = function (ev) {
         var msg = ev.data.split(',');
@@ -1537,12 +1984,8 @@ var WebMidiLink = /** @class */ (function () {
                 switch (command) {
                     case 'reqpatch':
                         // TODO: dummy data
-                        if (window.opener) {
-                            window.opener.postMessage("link,patch", '*');
-                        }
-                        else if (window.parent !== window) {
-                            window.parent.postMessage("link,patch", '*');
-                        }
+                        if (this.wml)
+                            this.wml.postMessage("link,patch", '*');
                         break;
                     case 'setpatch':
                         // TODO: NOP

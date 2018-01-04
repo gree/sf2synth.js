@@ -163,6 +163,7 @@ var GeneratorEnumeratorTable = [
     'exclusiveClass',
     'overridingRootKey'
 ];
+//# sourceMappingURL=Constants.js.map
 
 var VersionTag = /** @class */ (function () {
     function VersionTag() {
@@ -520,6 +521,7 @@ function loadSample(sampleHeader, samplingDataOffset, data) {
         return sample;
     });
 }
+//# sourceMappingURL=Parser.js.map
 
 /**
  * Parser で読み込んだサウンドフォントのデータを
@@ -613,23 +615,10 @@ var SoundFont = /** @class */ (function () {
             sample: sample,
             sampleRate: sampleHeader.sampleRate,
             sampleName: sampleHeader.sampleName,
-            scaleTuning: scaleTuning,
+            sampleModes: gen.sampleModes,
             playbackRate: function (key) { return Math.pow(Math.pow(2, 1 / 12), (key + basePitch) * scaleTuning); },
-            keyRange: gen.keyRange,
-            velRange: gen.velRange,
-            volAttack: convertTime(gen.volAttack),
-            volDecay: convertTime(gen.volDecay),
-            volSustain: gen.volSustain / 1000,
-            volRelease: convertTime(gen.volRelease),
-            modAttack: convertTime(gen.modAttack),
-            modDecay: convertTime(gen.modDecay),
-            modSustain: gen.modSustain / 1000,
-            modRelease: convertTime(gen.modRelease),
             modEnvToPitch: gen.modEnvToPitch / 100,
-            modEnvToFilterFc: gen.modEnvToFilterFc,
-            initialFilterQ: gen.initialFilterQ,
-            initialFilterFc: gen.initialFilterFc,
-            freqVibLFO: gen.freqVibLFO ? convertTime(gen.freqVibLFO) * 8.176 : undefined,
+            scaleTuning: scaleTuning,
             start: gen.startAddrsCoarseOffset * 32768 + gen.startAddrsOffset,
             end: gen.endAddrsCoarseOffset * 32768 + gen.endAddrsOffset,
             loopStart: (sampleHeader.loopStart +
@@ -637,7 +626,28 @@ var SoundFont = /** @class */ (function () {
                 gen.startloopAddrsOffset),
             loopEnd: (sampleHeader.loopEnd +
                 gen.endloopAddrsCoarseOffset * 32768 +
-                gen.endloopAddrsOffset)
+                gen.endloopAddrsOffset),
+            volDelay: convertTime(gen.volDelay),
+            volAttack: convertTime(gen.volAttack),
+            volHold: convertTime(gen.volHold),
+            volDecay: convertTime(gen.volDecay),
+            volSustain: gen.volSustain / 1000,
+            volRelease: convertTime(gen.volRelease),
+            modDelay: convertTime(gen.modDelay),
+            modAttack: convertTime(gen.modAttack),
+            modHold: convertTime(gen.modHold),
+            modDecay: convertTime(gen.modDecay),
+            modSustain: gen.modSustain / 1000,
+            modRelease: convertTime(gen.modRelease),
+            keyRange: gen.keyRange,
+            velRange: gen.velRange,
+            initialFilterFc: gen.initialFilterFc,
+            modEnvToFilterFc: gen.modEnvToFilterFc,
+            initialFilterQ: gen.initialFilterQ,
+            initialAttenuation: gen.initialAttenuation,
+            freqVibLFO: gen.freqVibLFO ? convertTime(gen.freqVibLFO) * 8.176 : undefined,
+            panpot: gen.panpot,
+            mute: false
         };
     };
     // presetNames[bankNumber][presetNumber] = presetName
@@ -714,10 +724,12 @@ function createInstrumentZone(instrumentGenerators) {
         sampleID: sampleID,
         volAttack: getValue("attackVolEnv"),
         volDecay: getValue("decayVolEnv"),
+        volDelay: getValue("delayVolEnv"),
         volSustain: getValue("sustainVolEnv"),
         volRelease: getValue("releaseVolEnv"),
         modAttack: getValue("attackModEnv"),
         modDecay: getValue("decayModEnv"),
+        modDelay: getValue("delayModEnv"),
         modSustain: getValue("sustainModEnv"),
         modRelease: getValue("releaseModEnv"),
         modEnvToPitch: getValue("modEnvToPitch"),
@@ -733,24 +745,30 @@ function createInstrumentZone(instrumentGenerators) {
         startloopAddrsOffset: getValue("startloopAddrsOffset"),
         startloopAddrsCoarseOffset: getValue("startloopAddrsCoarseOffset"),
         endloopAddrsOffset: getValue("endloopAddrsOffset"),
+        initialAttenuation: getValue("initialAttenuation"),
         endloopAddrsCoarseOffset: getValue("endloopAddrsCoarseOffset"),
         overridingRootKey: getValue("overridingRootKey"),
         initialFilterQ: getValue("initialFilterQ"),
-        initialFilterFc: getValue("initialFilterFc")
+        initialFilterFc: getValue("initialFilterFc"),
+        sampleModes: getValue("sampleModes")
     };
 }
 var defaultInstrumentZone = {
     keyRange: new RangeValue(0, 127),
     velRange: new RangeValue(0, 127),
     sampleID: undefined,
+    volDelay: -12000,
     volAttack: -12000,
     volDecay: -12000,
+    volHold: -12000,
     volSustain: 0,
     volRelease: -12000,
+    modDelay: -12000,
     modAttack: -12000,
+    modHold: -12000,
     modDecay: -12000,
     modSustain: 0,
-    modRelease: 0,
+    modRelease: -12000,
     modEnvToPitch: 0,
     modEnvToFilterFc: 0,
     coarseTune: 0,
@@ -763,11 +781,16 @@ var defaultInstrumentZone = {
     endAddrsCoarseOffset: 0,
     startloopAddrsOffset: 0,
     startloopAddrsCoarseOffset: 0,
+    initialAttenuation: 0,
     endloopAddrsOffset: 0,
     endloopAddrsCoarseOffset: 0,
     overridingRootKey: undefined,
     initialFilterQ: 1,
-    initialFilterFc: 13500
+    initialFilterFc: 13500,
+    sampleModes: 0,
+    panpot: 64,
+    mute: false,
+    releaseTime: 0
 };
 
 exports.parse = parse;
