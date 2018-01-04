@@ -146,8 +146,9 @@ export default class SoundFont {
       initialFilterQ: gen.initialFilterQ,
       initialAttenuation: gen.initialAttenuation,
       freqVibLFO: gen.freqVibLFO ? convertTime(gen.freqVibLFO) * 8.176 : undefined,
-      panpot: gen.panpot,
-      mute: false
+      pan: gen.pan,
+      mute: false,
+      releaseTime: gen.releaseTime
     }
   }
 
@@ -225,7 +226,7 @@ function createInstrumentZone(instrumentGenerators: GeneratorList[]) {
     }
     sampleID = lastInstrumentGenerator.value as number
   }
-
+  
   return {
     keyRange, // あるはずだが global zone には無いかもしれない
     velRange, // optional
@@ -258,7 +259,8 @@ function createInstrumentZone(instrumentGenerators: GeneratorList[]) {
     overridingRootKey: getValue("overridingRootKey"),
     initialFilterQ: getValue("initialFilterQ"),
     initialFilterFc: getValue("initialFilterFc"),
-    sampleModes: getValue("sampleModes")
+    sampleModes: getValue("sampleModes"),
+    pan: getValue("pan")
   }
 }
 
@@ -297,9 +299,9 @@ const defaultInstrumentZone = {
   initialFilterQ: 1,
   initialFilterFc: 13500,
   sampleModes: 0,
-  panpot: 64,
   mute: false,
-  releaseTime: 0
+  releaseTime: 64,
+  pan: undefined
 }
 
 export interface NoteInfo {
@@ -331,9 +333,9 @@ export interface NoteInfo {
   initialFilterQ: number
   initialAttenuation: number
   freqVibLFO: number | undefined
-  panpot: number
   mute: boolean
   releaseTime: number
+  pan: number | undefined
   keyRange: RangeValue
   velRange: RangeValue | undefined
 }

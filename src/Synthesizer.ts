@@ -47,17 +47,18 @@ export default class Synthesizer implements Listener {
   init() {
     for (let i = 0; i < 16; ++i) {
       this.channels.push(new Channel())
-      this.programChange(i, i !== 9 ? i : 0)
+      this.programChange(i, 0x00)
       this.volumeChange(i, 0x64)
       this.panpotChange(i, 0x40)
       this.pitchBend(i, 0)
       this.pitchBendSensitivity(i, 2)
       this.hold(i, false)
-      this.expression(i, 127)
-      this.bankSelectMsb(i, i === 9 ? 128 : 0x00)
+      this.expression(i, 0x7f)
+      this.bankSelectMsb(i, i === 9 ? 0x80 : 0x00)
       this.bankSelectLsb(i, 0x00)
       this.setPercussionPart(i, i === 9)
-      this.setReverbDepth(i, 40)
+      this.releaseTime(i, 0x40)
+      this.setReverbDepth(i, 0x28)
     }
   }
 
@@ -205,8 +206,8 @@ export default class Synthesizer implements Listener {
     this.channels[channelNumber].pitchBendSensitivity = sensitivity
   }
 
-  releaseTime = function (channel: number, releaseTime: number) {
-    this.channelRelease[channel] = releaseTime;
+  releaseTime(channelNumber: number, releaseTime: number) {
+    this.channels[channelNumber].releaseTime = releaseTime;
   }
 
   allSoundOff(channelNumber: number) {

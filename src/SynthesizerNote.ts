@@ -105,7 +105,9 @@ export default class SynthesizerNote {
     this.filter = filter
 
     // panpot
-    const pan = noteInfo.panpot !== void 0 ? noteInfo.panpot : this.panpot;
+    // TODO: ドラムパートのPanが変化した場合、その計算をしなければならない
+    // http://cpansearch.perl.org/src/PJB/MIDI-SoundFont-1.08/doc/sfspec21.html#8.4.6
+    const pan = noteInfo.pan ? noteInfo.pan / 10 : this.panpot;
     const panner = this.panner = ctx.createPanner()
     panner.panningModel = "equalpower"
     panner.setPosition(
