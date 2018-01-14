@@ -4,7 +4,7 @@ module.exports = {
     es6: true
   },
   parser: "babel-eslint",
-  extends: "eslint:recommended",
+  extends: ["eslint:recommended"],
   plugins: [],
   rules: {
     indent: ["warn", 2, { SwitchCase: 1 }],

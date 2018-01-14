@@ -336,7 +336,6 @@ var GeneratorEnumeratorTable = [
     'exclusiveClass',
     'overridingRootKey'
 ];
-//# sourceMappingURL=Constants.js.map
 
 var VersionTag = /** @class */ (function () {
     function VersionTag() {
@@ -694,8 +693,11 @@ function loadSample(sampleHeader, samplingDataOffset, data) {
         return sample;
     });
 }
-//# sourceMappingURL=Parser.js.map
 
+/**
+ * Parser で読み込んだサウンドフォントのデータを
+ * Synthesizer から利用しやすい形にするクラス
+ */
 var SoundFont = /** @class */ (function () {
     function SoundFont(parsed) {
         this.parsed = parsed;
@@ -1159,7 +1161,7 @@ var Synthesizer = /** @class */ (function () {
         var bankIndex = 0;
         var channel = this.channels[channelNumber];
         if (channel === undefined) {
-            return;
+            return 0;
         }
         if (channelNumber === 9) {
             this.setPercussionPart(9, true);
@@ -1834,7 +1836,6 @@ function delegateProxy(targets) {
         }
     });
 }
-//# sourceMappingURL=delegateProxy.js.map
 
 var WebMidiLink = /** @class */ (function () {
     function WebMidiLink(target) {
@@ -1954,3 +1955,4 @@ var WebMidiLink = /** @class */ (function () {
 }());
 
 export { WebMidiLink, Synthesizer, View, MidiMessageHandler, delegateProxy };
+//# sourceMappingURL=sf2.synth.esm.js.map

@@ -799,3 +799,4 @@ exports.SoundFont = SoundFont;
 Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
+//# sourceMappingURL=sf2.parser.js.map

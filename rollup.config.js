@@ -1,4 +1,5 @@
 import typescript from 'rollup-plugin-typescript'
+import sourcemaps from 'rollup-plugin-sourcemaps';
 import serve from 'rollup-plugin-serve'
 
 function create(name) {
@@ -8,7 +9,8 @@ function create(name) {
     plugins: [
       typescript({
         typescript: require("typescript")
-      })
+      }),
+      sourcemaps()
     ],
     output: [{
         file: `public/js/sf2.${name}.js`,
@@ -18,7 +20,8 @@ function create(name) {
         file: `public/js/sf2.${name}.esm.js`,
         format: "es"
       }
-    ]
+    ],
+    sourceMap: true
   };
 }
 

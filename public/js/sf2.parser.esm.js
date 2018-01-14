@@ -788,3 +788,4 @@ var defaultInstrumentZone = {
 };
 
 export { parse, SoundFont };
+//# sourceMappingURL=sf2.parser.esm.js.map

@@ -11,16 +11,19 @@
   },
   "author": "",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "tslint": "^5.9.1"
+  },
   "devDependencies": {
     "@types/jest": "^21.1.9",
-    "@types/node": "^8.5.5",
+    "@types/node": "^8.5.8",
     "assert": "^1.4.1",
-    "jest": "^22.0.4",
-    "rollup": "^0.53.1",
+    "jest": "^22.0.6",
+    "rollup": "^0.53.4",
     "rollup-plugin-serve": "^0.4.2",
+    "rollup-plugin-sourcemaps": "^0.4.2",
     "rollup-plugin-typescript": "^0.8.1",
-    "ts-jest": "^22.0.0",
+    "ts-jest": "^22.0.1",
     "typescript": "^2.6.2"
   },
   "jest": {

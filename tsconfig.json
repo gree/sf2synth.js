@@ -1,10 +1,18 @@
 {
   "compilerOptions": {
-    "lib": ["es2016", "dom"],
+    "lib": ["es6", "dom"],
+    "target": "es5",
     "sourceMap": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "strictNullChecks": true
-  }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
+  ]
 }

@@ -235,12 +235,12 @@ export default class Synthesizer implements Listener {
     this.channels[channelNumber].reverb = depth
   }
 
-  private getBank(channelNumber: number) {
+  private getBank(channelNumber: number):number {
     let bankIndex = 0;
     const channel = this.channels[channelNumber];
 
     if (channel === undefined) {
-      return;
+      return 0;
     }
 
     if (channelNumber === 9) {
