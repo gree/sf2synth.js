@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "sf2synth.js",
   "bin": {
-    "sf2synth": "sf2.parser.min.js"
+    "sf2synth": "bin/sf2.synth.js",
+    "sf2parser": "bin/sf2.parser.js"
   },
   "scripts": {
     "start": "rollup -c --watch",
