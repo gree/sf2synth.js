@@ -1,4 +1,4 @@
-import { NoteInfo } from "./SoundFont"
+import { NoteInfo } from "../parser/SoundFont"
 
 export interface InstrumentState {
   channel: number
