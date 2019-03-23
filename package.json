@@ -2,12 +2,10 @@
   "name": "sf2synth",
   "version": "1.0.0",
   "description": "sf2synth.js",
-  "bin": {
-    "sf2synth": "bin/sf2.synth.js",
-    "sf2parser": "bin/sf2.parser.js"
-  },
+  "main": "bin/index.js",
+  "types": "bin/index.d.ts",
   "scripts": {
-    "start": "rollup -c --watch",
+    "build": "tsc",
     "test": "jest --watch"
   },
   "author": "",
@@ -16,12 +14,9 @@
   "devDependencies": {
     "@types/jest": "^21.1.9",
     "@types/node": "^8.5.2",
-    "assert": "^1.4.1",
     "jest": "^22.0.4",
-    "rollup": "^0.53.1",
-    "rollup-plugin-typescript": "^0.8.1",
     "ts-jest": "^22.0.0",
-    "typescript": "^2.6.2"
+    "typescript": "2.9.2"
   },
   "jest": {
     "transform": {
