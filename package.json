@@ -12,11 +12,11 @@
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
-    "@types/jest": "^21.1.9",
-    "@types/node": "^8.5.2",
-    "jest": "^22.0.4",
-    "ts-jest": "^22.0.0",
-    "typescript": "2.9.2"
+    "@types/jest": "^24.0.19",
+    "@types/node": "^12.11.1",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.1.0",
+    "typescript": "3.6.4"
   },
   "jest": {
     "transform": {
