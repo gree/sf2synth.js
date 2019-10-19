@@ -79,7 +79,7 @@ export default class SoundFont {
         if (instrumentZone.sampleID === undefined) {
             throw new Error("Invalid SoundFont: sampleID not found");
         }
-        const gen = Object.assign({}, defaultInstrumentZone, removeUndefined(globalInstrumentZone || {}), removeUndefined(instrumentZone));
+        const gen = Object.assign(Object.assign(Object.assign({}, defaultInstrumentZone), removeUndefined(globalInstrumentZone || {})), removeUndefined(instrumentZone));
         const sample = this.parsed.samples[gen.sampleID];
         const sampleHeader = this.parsed.sampleHeaders[gen.sampleID];
         const tune = gen.coarseTune + gen.fineTune / 100;

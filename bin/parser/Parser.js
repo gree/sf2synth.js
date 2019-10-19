@@ -41,7 +41,7 @@ export default function parse(input, option = {}) {
         };
     }
     const result = parseRiffChunk(chunk, input);
-    return Object.assign({}, result, { samples: loadSample(result.sampleHeaders, result.samplingData.offset, input) });
+    return Object.assign(Object.assign({}, result), { samples: loadSample(result.sampleHeaders, result.samplingData.offset, input) });
 }
 function getChunkList(chunk, data, expectedType, expectedSignature) {
     // check parse target
@@ -91,7 +91,7 @@ const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", InstrumentBag
 const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", ModulatorList, m => m.isEnd);
 const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", ModulatorList, m => m.isEnd);
 const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", GeneratorList, g => g.isEnd);
-const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", GeneratorList, g => g.isEnd);
+const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", GeneratorList);
 const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", SampleHeader, s => s.isEnd);
 function adjustSampleData(sample, sampleRate) {
     let multiply = 1;
