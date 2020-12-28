@@ -1,0 +1,50 @@
+import { NoteInfo } from "../parser/SoundFont";
+export interface InstrumentState {
+    channel: number;
+    key: number;
+    volume: number;
+    panpot: number;
+    velocity: number;
+    pitchBend: number;
+    pitchBendSensitivity: number;
+    expression: number;
+    mute: boolean;
+    releaseTime: number;
+    cutOffFrequency: number;
+    harmonicContent: number;
+}
+export default class SynthesizerNote {
+    audioBuffer: AudioBuffer;
+    bufferSource: AudioBufferSourceNode;
+    panner: PannerNode;
+    expressionGain: GainNode;
+    gainOutput: GainNode;
+    ctx: AudioContext;
+    destination: AudioNode;
+    filter: BiquadFilterNode;
+    modulator: BiquadFilterNode;
+    noteInfo: NoteInfo;
+    instrument: InstrumentState;
+    channel: number;
+    key: number;
+    velocity: number;
+    playbackRate: number;
+    volume: number;
+    panpot: number;
+    pitchBend: number;
+    pitchBendSensitivity: number;
+    modEnvToPitch: number;
+    expression: number;
+    startTime: number;
+    computedPlaybackRate: number;
+    noteOffState: boolean;
+    sampleModes: number;
+    constructor(ctx: AudioContext, destination: AudioNode, noteInfo: NoteInfo, instrument: InstrumentState);
+    noteOn(): void;
+    amountToFreq(val: number): number;
+    noteOff(): void;
+    disconnect(): void;
+    schedulePlaybackRate(): void;
+    updateExpression(expression: number): void;
+    updatePitchBend(pitchBend: number): void;
+}
