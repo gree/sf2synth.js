@@ -6,6 +6,7 @@
   "types": "bin/index.d.ts",
   "scripts": {
     "start": "rollup -c --watch",
+    "build": "tsc",
     "test": "jest"
   },
   "author": "",
