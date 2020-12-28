@@ -1,17 +1,5 @@
-const __assign = Object.assign || function (target) {
-    for (var source, i = 1; i < arguments.length; i++) {
-        source = arguments[i];
-        for (var prop in source) {
-            if (Object.prototype.hasOwnProperty.call(source, prop)) {
-                target[prop] = source[prop];
-            }
-        }
-    }
-    return target;
-};
-
-var SynthesizerNote = /** @class */ (function () {
-    function SynthesizerNote(ctx, destination, noteInfo, instrument) {
+class SynthesizerNote {
+    constructor(ctx, destination, noteInfo, instrument) {
         this.ctx = ctx;
         this.destination = destination;
         this.noteInfo = noteInfo;
@@ -28,59 +16,58 @@ var SynthesizerNote = /** @class */ (function () {
         this.startTime = ctx.currentTime;
         this.computedPlaybackRate = this.playbackRate;
     }
-    SynthesizerNote.prototype.noteOn = function () {
-        var _this = this;
-        var _a = this, ctx = _a.ctx, noteInfo = _a.noteInfo;
-        var sample = noteInfo.sample.subarray(0, noteInfo.sample.length + noteInfo.end);
+    noteOn() {
+        const { ctx, noteInfo } = this;
+        const sample = noteInfo.sample.subarray(0, noteInfo.sample.length + noteInfo.end);
         this.audioBuffer = ctx.createBuffer(1, sample.length, noteInfo.sampleRate);
-        var channelData = this.audioBuffer.getChannelData(0);
+        const channelData = this.audioBuffer.getChannelData(0);
         channelData.set(sample);
         // buffer source
-        var bufferSource = ctx.createBufferSource();
+        const bufferSource = ctx.createBufferSource();
         bufferSource.buffer = this.audioBuffer;
         bufferSource.loop = this.sampleModes !== 0;
         bufferSource.loopStart = noteInfo.loopStart / noteInfo.sampleRate;
         bufferSource.loopEnd = noteInfo.loopEnd / noteInfo.sampleRate;
-        bufferSource.onended = function () { return _this.disconnect(); };
+        bufferSource.onended = () => this.disconnect();
         this.bufferSource = bufferSource;
         this.updatePitchBend(this.pitchBend);
         // audio node
-        var output = this.gainOutput = ctx.createGain();
-        var outputGain = output.gain;
+        const output = this.gainOutput = ctx.createGain();
+        const outputGain = output.gain;
         // expression
         this.expressionGain = ctx.createGain();
         //this.expressionGain.gain.value = this.expression / 127;
         this.expressionGain.gain.setTargetAtTime(this.expression / 127, this.ctx.currentTime, 0.015);
         // Modulator
-        var modulator = this.modulator = ctx.createBiquadFilter();
+        const modulator = this.modulator = ctx.createBiquadFilter();
         // filter
-        var filter = ctx.createBiquadFilter();
+        const filter = ctx.createBiquadFilter();
         filter.type = "lowpass";
         this.filter = filter;
         // panpot
         // TODO: ドラムパートのPanが変化した場合、その計算をしなければならない
         // http://cpansearch.perl.org/src/PJB/MIDI-SoundFont-1.08/doc/sfspec21.html#8.4.6
-        var pan = noteInfo.pan ? noteInfo.pan / 120 : this.panpot;
-        var panner = this.panner = ctx.createPanner();
+        const pan = noteInfo.pan ? noteInfo.pan / 120 : this.panpot;
+        const panner = this.panner = ctx.createPanner();
         panner.panningModel = "equalpower";
         panner.setPosition(Math.sin(pan * Math.PI / 2), 0, Math.cos(pan * Math.PI / 2));
         //---------------------------------------------------------------------------
         // Delay, Attack, Hold, Decay, Sustain
         //---------------------------------------------------------------------------
-        var attackVolume = this.volume * (this.velocity / 127) * (1 - noteInfo.initialAttenuation / 1000);
+        let attackVolume = this.volume * (this.velocity / 127) * (1 - noteInfo.initialAttenuation / 1000);
         if (attackVolume < 0) {
             attackVolume = 0;
         }
-        var now = this.ctx.currentTime;
-        var volDelay = now + noteInfo.volDelay;
-        var volAttack = volDelay + noteInfo.volAttack;
-        var volHold = volAttack + noteInfo.volHold;
-        var volDecay = volHold + noteInfo.volDecay;
-        var modDelay = now + noteInfo.modDelay;
-        var modAttack = volDelay + noteInfo.modAttack;
-        var modHold = modAttack + noteInfo.modHold;
-        var modDecay = modHold + noteInfo.modDecay;
-        var startTime = noteInfo.start / noteInfo.sampleRate;
+        const now = this.ctx.currentTime;
+        const volDelay = now + noteInfo.volDelay;
+        const volAttack = volDelay + noteInfo.volAttack;
+        const volHold = volAttack + noteInfo.volHold;
+        const volDecay = volHold + noteInfo.volDecay;
+        const modDelay = now + noteInfo.modDelay;
+        const modAttack = volDelay + noteInfo.modAttack;
+        const modHold = modAttack + noteInfo.modHold;
+        const modDecay = modHold + noteInfo.modDecay;
+        const startTime = noteInfo.start / noteInfo.sampleRate;
         // volume envelope
         outputGain
             .setValueAtTime(0, now)
@@ -89,9 +76,9 @@ var SynthesizerNote = /** @class */ (function () {
             .setValueAtTime(attackVolume, volHold)
             .linearRampToValueAtTime(attackVolume * (1 - noteInfo.volSustain), volDecay);
         // modulation envelope
-        var baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
-        var peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
-        var sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - noteInfo.modSustain);
+        const baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
+        const peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
+        const sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - noteInfo.modSustain);
         modulator.Q.setValueAtTime(Math.pow(10, noteInfo.initialFilterQ / 200), now);
         //modulator.frequency.value = baseFreq;
         modulator.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.015);
@@ -112,27 +99,27 @@ var SynthesizerNote = /** @class */ (function () {
         }
         // fire
         bufferSource.start(0, startTime);
-    };
-    SynthesizerNote.prototype.amountToFreq = function (val) {
+    }
+    amountToFreq(val) {
         return Math.pow(2, (val - 6900) / 1200) * 440;
-    };
-    SynthesizerNote.prototype.noteOff = function () {
-        var _a = this, noteInfo = _a.noteInfo, bufferSource = _a.bufferSource;
-        var output = this.gainOutput;
-        var now = this.ctx.currentTime;
-        var release = noteInfo.releaseTime - 64;
+    }
+    noteOff() {
+        const { noteInfo, bufferSource } = this;
+        const output = this.gainOutput;
+        const now = this.ctx.currentTime;
+        const release = noteInfo.releaseTime - 64;
         //---------------------------------------------------------------------------
         // volume release time
         //---------------------------------------------------------------------------
-        var volEndTimeTmp = noteInfo.volRelease * output.gain.value;
-        var volEndTime = now + (volEndTimeTmp * (1 + release / (release < 0 ? 64 : 63)));
+        const volEndTimeTmp = noteInfo.volRelease * output.gain.value;
+        const volEndTime = now + (volEndTimeTmp * (1 + release / (release < 0 ? 64 : 63)));
         //---------------------------------------------------------------------------
         // modulation release time
         //---------------------------------------------------------------------------
-        var modulator = this.modulator;
-        var baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
-        var peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
-        var modEndTime = now + noteInfo.modRelease *
+        const modulator = this.modulator;
+        const baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
+        const peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
+        const modEndTime = now + noteInfo.modRelease *
             (baseFreq === peekFreq ?
                 1 :
                 (modulator.frequency.value - baseFreq) / (peekFreq - baseFreq));
@@ -161,52 +148,50 @@ var SynthesizerNote = /** @class */ (function () {
                 bufferSource.loop = false;
                 break;
         }
-    };
-    SynthesizerNote.prototype.disconnect = function () {
+    }
+    disconnect() {
         this.gainOutput.disconnect(0);
-    };
-    SynthesizerNote.prototype.schedulePlaybackRate = function () {
-        var noteInfo = this.noteInfo;
-        var playbackRate = this.bufferSource.playbackRate;
-        var computed = this.computedPlaybackRate;
-        var start = this.startTime;
-        var modAttack = start + noteInfo.modAttack;
-        var modDecay = modAttack + noteInfo.modDecay;
-        var peekPitch = computed * Math.pow(Math.pow(2, 1 / 12), noteInfo.modEnvToPitch * noteInfo.scaleTuning);
+    }
+    schedulePlaybackRate() {
+        const { noteInfo } = this;
+        const playbackRate = this.bufferSource.playbackRate;
+        const computed = this.computedPlaybackRate;
+        const start = this.startTime;
+        const modAttack = start + noteInfo.modAttack;
+        const modDecay = modAttack + noteInfo.modDecay;
+        const peekPitch = computed * Math.pow(Math.pow(2, 1 / 12), noteInfo.modEnvToPitch * noteInfo.scaleTuning);
         playbackRate.cancelScheduledValues(0);
         playbackRate.setValueAtTime(computed, start);
         playbackRate.linearRampToValueAtTime(peekPitch, modAttack);
         playbackRate.linearRampToValueAtTime(computed + (peekPitch - computed) * (1 - noteInfo.modSustain), modDecay);
-    };
-    SynthesizerNote.prototype.updateExpression = function (expression) {
+    }
+    updateExpression(expression) {
         this.expressionGain.gain.value = (this.expression = expression) / 127;
-    };
-    
-    SynthesizerNote.prototype.updatePitchBend = function (pitchBend) {
+    }
+    ;
+    updatePitchBend(pitchBend) {
         this.computedPlaybackRate = this.playbackRate * Math.pow(Math.pow(2, 1 / 12), (this.pitchBendSensitivity * (pitchBend / (pitchBend < 0 ? 8192 : 8191))) * this.noteInfo.scaleTuning);
         this.schedulePlaybackRate();
-    };
-    return SynthesizerNote;
-}());
+    }
+}
 
-var Stream = /** @class */ (function () {
-    function Stream(data, offset) {
+class Stream {
+    constructor(data, offset) {
         this.data = data;
         this.ip = offset;
     }
-    Stream.prototype.readString = function (size) {
-        var str = String.fromCharCode.apply(null, this.data.subarray(this.ip, this.ip += size));
-        var nullLocation = str.indexOf("\u0000");
+    readString(size) {
+        const str = String.fromCharCode.apply(null, this.data.subarray(this.ip, this.ip += size));
+        const nullLocation = str.indexOf("\u0000");
         if (nullLocation > 0) {
             return str.substr(0, nullLocation);
         }
         return str;
-    };
-    Stream.prototype.readWORD = function () {
+    }
+    readWORD() {
         return this.data[this.ip++] | (this.data[this.ip++] << 8);
-    };
-    Stream.prototype.readDWORD = function (bigEndian) {
-        if (bigEndian === void 0) { bigEndian = false; }
+    }
+    readDWORD(bigEndian = false) {
         if (bigEndian) {
             return ((this.data[this.ip++] << 24) |
                 (this.data[this.ip++] << 16) |
@@ -219,46 +204,43 @@ var Stream = /** @class */ (function () {
                 (this.data[this.ip++] << 16) |
                 (this.data[this.ip++] << 24)) >>> 0;
         }
-    };
-    Stream.prototype.readByte = function () {
+    }
+    readByte() {
         return this.data[this.ip++];
-    };
-    Stream.prototype.readAt = function (offset) {
+    }
+    readAt(offset) {
         return this.data[this.ip + offset];
-    };
+    }
     /* helper */
-    Stream.prototype.readUInt8 = function () {
+    readUInt8() {
         return this.readByte();
-    };
-    Stream.prototype.readInt8 = function () {
+    }
+    readInt8() {
         return (this.readByte() << 24) >> 24;
-    };
-    Stream.prototype.readUInt16 = function () {
+    }
+    readUInt16() {
         return this.readWORD();
-    };
-    Stream.prototype.readInt16 = function () {
+    }
+    readInt16() {
         return (this.readWORD() << 16) >> 16;
-    };
-    Stream.prototype.readUInt32 = function () {
+    }
+    readUInt32() {
         return this.readDWORD();
-    };
-    return Stream;
-}());
+    }
+}
 
 function parseChunk$1(input, ip, bigEndian) {
-    var stream = new Stream(input, ip);
-    var type = stream.readString(4);
-    var size = stream.readDWORD(bigEndian);
+    const stream = new Stream(input, ip);
+    const type = stream.readString(4);
+    const size = stream.readDWORD(bigEndian);
     return new Chunk(type, size, stream.ip);
 }
-function parseRiff(input, index, length, _a) {
-    if (index === void 0) { index = 0; }
-    var _b = _a === void 0 ? {} : _a, _c = _b.padding, padding = _c === void 0 ? true : _c, _d = _b.bigEndian, bigEndian = _d === void 0 ? false : _d;
-    var chunkList = [];
-    var end = length + index;
-    var ip = index;
+function parseRiff(input, index = 0, length, { padding = true, bigEndian = false } = {}) {
+    const chunkList = [];
+    const end = length + index;
+    let ip = index;
     while (ip < end) {
-        var chunk = parseChunk$1(input, ip, bigEndian);
+        const chunk = parseChunk$1(input, ip, bigEndian);
         ip = chunk.offset + chunk.size;
         // padding
         if (padding && ((ip - index) & 1) === 1) {
@@ -268,16 +250,15 @@ function parseRiff(input, index, length, _a) {
     }
     return chunkList;
 }
-var Chunk = /** @class */ (function () {
-    function Chunk(type, size, offset) {
+class Chunk {
+    constructor(type, size, offset) {
         this.type = type;
         this.size = size;
         this.offset = offset;
     }
-    return Chunk;
-}());
+}
 
-var GeneratorEnumeratorTable = [
+const GeneratorEnumeratorTable = [
     'startAddrsOffset',
     'endAddrsOffset',
     'startloopAddrsOffset',
@@ -337,43 +318,38 @@ var GeneratorEnumeratorTable = [
     'overridingRootKey'
 ];
 
-var VersionTag = /** @class */ (function () {
-    function VersionTag() {
-    }
-    VersionTag.parse = function (stream) {
-        var v = new VersionTag();
+class VersionTag {
+    static parse(stream) {
+        const v = new VersionTag();
         v.major = stream.readInt8();
         v.minor = stream.readInt8();
         return v;
-    };
-    return VersionTag;
-}());
-var Info = /** @class */ (function () {
-    function Info() {
     }
+}
+class Info {
     // LIST - INFO の全ての chunk
-    Info.parse = function (data, chunks) {
+    static parse(data, chunks) {
         function getChunk(type) {
-            return chunks.find(function (c) { return c.type === type; });
+            return chunks.find(c => c.type === type);
         }
         function toStream(chunk) {
             return new Stream(data, chunk.offset);
         }
         function readString(type) {
-            var chunk = getChunk(type);
+            const chunk = getChunk(type);
             if (!chunk) {
                 return null;
             }
             return toStream(chunk).readString(chunk.size);
         }
         function readVersionTag(type) {
-            var chunk = getChunk(type);
+            const chunk = getChunk(type);
             if (!chunk) {
                 return null;
             }
             return VersionTag.parse(toStream(chunk));
         }
-        var info = new Info();
+        const info = new Info();
         info.comment = readString("ICMT");
         info.copyright = readString("ICOP");
         info.creationDate = readString("ICRD");
@@ -386,21 +362,14 @@ var Info = /** @class */ (function () {
         info.romName = readString("irom");
         info.romVersion = readVersionTag("iver");
         return info;
-    };
-    return Info;
-}());
-var PresetHeader = /** @class */ (function () {
-    function PresetHeader() {
     }
-    Object.defineProperty(PresetHeader.prototype, "isEnd", {
-        get: function () {
-            return this.presetName === "EOP";
-        },
-        enumerable: true,
-        configurable: true
-    });
-    PresetHeader.parse = function (stream) {
-        var p = new PresetHeader();
+}
+class PresetHeader {
+    get isEnd() {
+        return this.presetName === "EOP";
+    }
+    static parse(stream) {
+        const p = new PresetHeader();
         p.presetName = stream.readString(20);
         p.preset = stream.readWORD();
         p.bank = stream.readWORD();
@@ -409,53 +378,38 @@ var PresetHeader = /** @class */ (function () {
         p.genre = stream.readDWORD();
         p.morphology = stream.readDWORD();
         return p;
-    };
-    return PresetHeader;
-}());
-var PresetBag = /** @class */ (function () {
-    function PresetBag() {
     }
-    PresetBag.parse = function (stream) {
-        var p = new PresetBag();
+}
+class PresetBag {
+    static parse(stream) {
+        const p = new PresetBag();
         p.presetGeneratorIndex = stream.readWORD();
         p.presetModulatorIndex = stream.readWORD();
         return p;
-    };
-    return PresetBag;
-}());
-var RangeValue = /** @class */ (function () {
-    function RangeValue(lo, hi) {
+    }
+}
+class RangeValue {
+    constructor(lo, hi) {
         this.lo = lo;
         this.hi = hi;
     }
-    RangeValue.parse = function (stream) {
+    static parse(stream) {
         return new RangeValue(stream.readByte(), stream.readByte());
-    };
-    return RangeValue;
-}());
-var ModulatorList = /** @class */ (function () {
-    function ModulatorList() {
     }
-    Object.defineProperty(ModulatorList.prototype, "type", {
-        get: function () {
-            return GeneratorEnumeratorTable[this.destinationOper];
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(ModulatorList.prototype, "isEnd", {
-        get: function () {
-            return this.sourceOper === 0 &&
-                this.destinationOper === 0 &&
-                this.value === 0 &&
-                this.amountSourceOper === 0 &&
-                this.transOper === 0;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    ModulatorList.parse = function (stream) {
-        var t = new ModulatorList();
+}
+class ModulatorList {
+    get type() {
+        return GeneratorEnumeratorTable[this.destinationOper];
+    }
+    get isEnd() {
+        return this.sourceOper === 0 &&
+            this.destinationOper === 0 &&
+            this.value === 0 &&
+            this.amountSourceOper === 0 &&
+            this.transOper === 0;
+    }
+    static parse(stream) {
+        const t = new ModulatorList();
         t.sourceOper = stream.readWORD();
         t.destinationOper = stream.readWORD();
         switch (t.type) {
@@ -472,29 +426,18 @@ var ModulatorList = /** @class */ (function () {
         t.amountSourceOper = stream.readWORD();
         t.transOper = stream.readWORD();
         return t;
-    };
-    return ModulatorList;
-}());
-var GeneratorList = /** @class */ (function () {
-    function GeneratorList() {
     }
-    Object.defineProperty(GeneratorList.prototype, "type", {
-        get: function () {
-            return GeneratorEnumeratorTable[this.code];
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(GeneratorList.prototype, "isEnd", {
-        get: function () {
-            return this.code === 0 &&
-                this.value === 0;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    GeneratorList.parse = function (stream) {
-        var t = new GeneratorList();
+}
+class GeneratorList {
+    get type() {
+        return GeneratorEnumeratorTable[this.code];
+    }
+    get isEnd() {
+        return this.code === 0 &&
+            this.value === 0;
+    }
+    static parse(stream) {
+        const t = new GeneratorList();
         t.code = stream.readWORD();
         switch (t.type) {
             case 'keynum': /* FALLTHROUGH */
@@ -508,50 +451,33 @@ var GeneratorList = /** @class */ (function () {
                 break;
         }
         return t;
-    };
-    return GeneratorList;
-}());
-var Instrument = /** @class */ (function () {
-    function Instrument() {
     }
-    Object.defineProperty(Instrument.prototype, "isEnd", {
-        get: function () {
-            return this.instrumentName === "EOI";
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Instrument.parse = function (stream) {
-        var t = new Instrument();
+}
+class Instrument {
+    get isEnd() {
+        return this.instrumentName === "EOI";
+    }
+    static parse(stream) {
+        const t = new Instrument();
         t.instrumentName = stream.readString(20);
         t.instrumentBagIndex = stream.readWORD();
         return t;
-    };
-    return Instrument;
-}());
-var InstrumentBag = /** @class */ (function () {
-    function InstrumentBag() {
     }
-    InstrumentBag.parse = function (stream) {
-        var t = new InstrumentBag();
+}
+class InstrumentBag {
+    static parse(stream) {
+        const t = new InstrumentBag();
         t.instrumentGeneratorIndex = stream.readWORD();
         t.instrumentModulatorIndex = stream.readWORD();
         return t;
-    };
-    return InstrumentBag;
-}());
-var SampleHeader = /** @class */ (function () {
-    function SampleHeader() {
     }
-    Object.defineProperty(SampleHeader.prototype, "isEnd", {
-        get: function () {
-            return this.sampleName === "EOS";
-        },
-        enumerable: true,
-        configurable: true
-    });
-    SampleHeader.parse = function (stream) {
-        var s = new SampleHeader();
+}
+class SampleHeader {
+    get isEnd() {
+        return this.sampleName === "EOS";
+    }
+    static parse(stream) {
+        const s = new SampleHeader();
         s.sampleName = stream.readString(20);
         s.start = stream.readDWORD();
         s.end = stream.readDWORD();
@@ -565,34 +491,32 @@ var SampleHeader = /** @class */ (function () {
         s.loopStart -= s.start;
         s.loopEnd -= s.start;
         return s;
-    };
-    return SampleHeader;
-}());
+    }
+}
 
-function parse(input, option) {
-    if (option === void 0) { option = {}; }
+function parse(input, option = {}) {
     // parse RIFF chunk
-    var chunkList = parseRiff(input, 0, input.length, option);
+    const chunkList = parseRiff(input, 0, input.length, option);
     if (chunkList.length !== 1) {
         throw new Error('wrong chunk length');
     }
-    var chunk = chunkList[0];
+    const chunk = chunkList[0];
     if (chunk === null) {
         throw new Error('chunk not found');
     }
     function parseRiffChunk(chunk, data) {
-        var chunkList = getChunkList(chunk, data, "RIFF", "sfbk");
+        const chunkList = getChunkList(chunk, data, "RIFF", "sfbk");
         if (chunkList.length !== 3) {
             throw new Error('invalid sfbk structure');
         }
-        return __assign({ 
+        return Object.assign({ 
             // INFO-list
             info: parseInfoList(chunkList[0], data), 
             // sdta-list
             samplingData: parseSdtaList(chunkList[1], data) }, parsePdtaList(chunkList[2], data));
     }
     function parsePdtaList(chunk, data) {
-        var chunkList = getChunkList(chunk, data, "LIST", "pdta");
+        const chunkList = getChunkList(chunk, data, "LIST", "pdta");
         // check number of chunks
         if (chunkList.length !== 9) {
             throw new Error('invalid pdta chunk');
@@ -609,17 +533,17 @@ function parse(input, option) {
             sampleHeaders: parseShdr(chunkList[8], data)
         };
     }
-    var result = parseRiffChunk(chunk, input);
-    return __assign({}, result, { samples: loadSample(result.sampleHeaders, result.samplingData.offset, input) });
+    const result = parseRiffChunk(chunk, input);
+    return Object.assign(Object.assign({}, result), { samples: loadSample(result.sampleHeaders, result.samplingData.offset, input) });
 }
 function getChunkList(chunk, data, expectedType, expectedSignature) {
     // check parse target
     if (chunk.type !== expectedType) {
         throw new Error('invalid chunk type:' + chunk.type);
     }
-    var stream = new Stream(data, chunk.offset);
+    const stream = new Stream(data, chunk.offset);
     // check signature
-    var signature = stream.readString(4);
+    const signature = stream.readString(4);
     if (signature !== expectedSignature) {
         throw new Error('invalid signature:' + signature);
     }
@@ -627,25 +551,25 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
     return parseRiff(data, stream.ip, chunk.size - 4);
 }
 function parseInfoList(chunk, data) {
-    var chunkList = getChunkList(chunk, data, "LIST", "INFO");
+    const chunkList = getChunkList(chunk, data, "LIST", "INFO");
     return Info.parse(data, chunkList);
 }
 function parseSdtaList(chunk, data) {
-    var chunkList = getChunkList(chunk, data, "LIST", "sdta");
+    const chunkList = getChunkList(chunk, data, "LIST", "sdta");
     if (chunkList.length !== 1) {
         throw new Error('TODO');
     }
     return chunkList[0];
 }
 function parseChunk(chunk, data, type, clazz, terminate) {
-    var result = [];
+    const result = [];
     if (chunk.type !== type) {
         throw new Error('invalid chunk type:' + chunk.type);
     }
-    var stream = new Stream(data, chunk.offset);
-    var size = chunk.offset + chunk.size;
+    const stream = new Stream(data, chunk.offset);
+    const size = chunk.offset + chunk.size;
     while (stream.ip < size) {
-        var obj = clazz.parse(stream);
+        const obj = clazz.parse(stream);
         if (terminate && terminate(obj)) {
             break;
         }
@@ -653,21 +577,21 @@ function parseChunk(chunk, data, type, clazz, terminate) {
     }
     return result;
 }
-var parsePhdr = function (chunk, data) { return parseChunk(chunk, data, "phdr", PresetHeader, function (p) { return p.isEnd; }); };
-var parsePbag = function (chunk, data) { return parseChunk(chunk, data, "pbag", PresetBag); };
-var parseInst = function (chunk, data) { return parseChunk(chunk, data, "inst", Instrument, function (i) { return i.isEnd; }); };
-var parseIbag = function (chunk, data) { return parseChunk(chunk, data, "ibag", InstrumentBag); };
-var parsePmod = function (chunk, data) { return parseChunk(chunk, data, "pmod", ModulatorList, function (m) { return m.isEnd; }); };
-var parseImod = function (chunk, data) { return parseChunk(chunk, data, "imod", ModulatorList, function (m) { return m.isEnd; }); };
-var parsePgen = function (chunk, data) { return parseChunk(chunk, data, "pgen", GeneratorList, function (g) { return g.isEnd; }); };
-var parseIgen = function (chunk, data) { return parseChunk(chunk, data, "igen", GeneratorList, function (g) { return g.isEnd; }); };
-var parseShdr = function (chunk, data) { return parseChunk(chunk, data, "shdr", SampleHeader, function (s) { return s.isEnd; }); };
+const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", PresetHeader, p => p.isEnd);
+const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", PresetBag);
+const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", Instrument, i => i.isEnd);
+const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", InstrumentBag);
+const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", ModulatorList, m => m.isEnd);
+const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", ModulatorList, m => m.isEnd);
+const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", GeneratorList, g => g.isEnd);
+const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", GeneratorList);
+const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", SampleHeader, s => s.isEnd);
 function adjustSampleData(sample, sampleRate) {
-    var multiply = 1;
+    let multiply = 1;
     // buffer
     while (sampleRate < 22050) {
-        var newSample = new Int16Array(sample.length * 2);
-        for (var i = 0, j = 0, il = sample.length; i < il; ++i) {
+        const newSample = new Int16Array(sample.length * 2);
+        for (let i = 0, j = 0, il = sample.length; i < il; ++i) {
             newSample[j++] = sample[i];
             newSample[j++] = sample[i];
         }
@@ -676,15 +600,15 @@ function adjustSampleData(sample, sampleRate) {
         sampleRate *= 2;
     }
     return {
-        sample: sample,
-        multiply: multiply
+        sample,
+        multiply
     };
 }
 function loadSample(sampleHeader, samplingDataOffset, data) {
-    return sampleHeader.map(function (header) {
-        var sample = new Int16Array(new Uint8Array(data.subarray(samplingDataOffset + header.start * 2, samplingDataOffset + header.end * 2)).buffer);
+    return sampleHeader.map(header => {
+        let sample = new Int16Array(new Uint8Array(data.subarray(samplingDataOffset + header.start * 2, samplingDataOffset + header.end * 2)).buffer);
         if (header.sampleRate > 0) {
-            var adjust = adjustSampleData(sample, header.sampleRate);
+            const adjust = adjustSampleData(sample, header.sampleRate);
             sample = adjust.sample;
             header.sampleRate *= adjust.multiply;
             header.loopStart *= adjust.multiply;
@@ -698,19 +622,19 @@ function loadSample(sampleHeader, samplingDataOffset, data) {
  * Parser で読み込んだサウンドフォントのデータを
  * Synthesizer から利用しやすい形にするクラス
  */
-var SoundFont = /** @class */ (function () {
-    function SoundFont(parsed) {
+class SoundFont {
+    constructor(parsed) {
         this.parsed = parsed;
     }
-    SoundFont.prototype.getPresetZone = function (presetHeaderIndex) {
-        var presetGenerators;
-        var presetHeader = this.parsed.presetHeaders[presetHeaderIndex];
-        var presetBag = this.parsed.presetZone[presetHeader.presetBagIndex];
-        var nextPresetHeaderIndex = presetHeaderIndex + 1;
+    getPresetZone(presetHeaderIndex) {
+        let presetGenerators;
+        const presetHeader = this.parsed.presetHeaders[presetHeaderIndex];
+        const presetBag = this.parsed.presetZone[presetHeader.presetBagIndex];
+        const nextPresetHeaderIndex = presetHeaderIndex + 1;
         if (nextPresetHeaderIndex < this.parsed.presetHeaders.length) {
             // 次の preset までのすべての generator を取得する
-            var nextPresetHeader = this.parsed.presetHeaders[nextPresetHeaderIndex];
-            var nextPresetBag = this.parsed.presetZone[nextPresetHeader.presetBagIndex];
+            const nextPresetHeader = this.parsed.presetHeaders[nextPresetHeaderIndex];
+            const nextPresetBag = this.parsed.presetZone[nextPresetHeader.presetBagIndex];
             presetGenerators = this.parsed.presetGenerators.slice(presetBag.presetGeneratorIndex, nextPresetBag.presetGeneratorIndex);
         }
         else {
@@ -718,52 +642,50 @@ var SoundFont = /** @class */ (function () {
             presetGenerators = this.parsed.presetGenerators.slice(presetBag.presetGeneratorIndex, this.parsed.presetGenerators.length);
         }
         return presetGenerators;
-    };
-    SoundFont.prototype.getInstrumentZone = function (instrumentZoneIndex) {
-        var instrumentBag = this.parsed.instrumentZone[instrumentZoneIndex];
-        var nextInstrumentBag = this.parsed.instrumentZone[instrumentZoneIndex + 1];
-        var generatorIndex = instrumentBag.instrumentGeneratorIndex;
-        var nextGeneratorIndex = nextInstrumentBag ? nextInstrumentBag.instrumentGeneratorIndex : this.parsed.instrumentGenerators.length;
-        var generators = this.parsed.instrumentGenerators.slice(generatorIndex, nextGeneratorIndex);
+    }
+    getInstrumentZone(instrumentZoneIndex) {
+        const instrumentBag = this.parsed.instrumentZone[instrumentZoneIndex];
+        const nextInstrumentBag = this.parsed.instrumentZone[instrumentZoneIndex + 1];
+        const generatorIndex = instrumentBag.instrumentGeneratorIndex;
+        const nextGeneratorIndex = nextInstrumentBag ? nextInstrumentBag.instrumentGeneratorIndex : this.parsed.instrumentGenerators.length;
+        const generators = this.parsed.instrumentGenerators.slice(generatorIndex, nextGeneratorIndex);
         return createInstrumentZone(generators);
-    };
-    SoundFont.prototype.getInstrumentZoneIndexes = function (instrumentID) {
-        var instrument = this.parsed.instruments[instrumentID];
-        var nextInstrument = this.parsed.instruments[instrumentID + 1];
+    }
+    getInstrumentZoneIndexes(instrumentID) {
+        const instrument = this.parsed.instruments[instrumentID];
+        const nextInstrument = this.parsed.instruments[instrumentID + 1];
         return arrayRange(instrument.instrumentBagIndex, nextInstrument ? nextInstrument.instrumentBagIndex : this.parsed.instrumentZone.length);
-    };
-    SoundFont.prototype.getInstrumentKey = function (bankNumber, instrumentNumber, key, velocity) {
-        var _this = this;
-        if (velocity === void 0) { velocity = 100; }
-        var presetHeaderIndex = this.parsed.presetHeaders.findIndex(function (p) { return p.preset === instrumentNumber && p.bank === bankNumber; });
+    }
+    getInstrumentKey(bankNumber, instrumentNumber, key, velocity = 100) {
+        const presetHeaderIndex = this.parsed.presetHeaders.findIndex(p => p.preset === instrumentNumber && p.bank === bankNumber);
         if (presetHeaderIndex < 0) {
             console.warn("preset not found: bank=%s instrument=%s", bankNumber, instrumentNumber);
             return null;
         }
-        var presetGenerators = this.getPresetZone(presetHeaderIndex);
+        const presetGenerators = this.getPresetZone(presetHeaderIndex);
         // Last Preset Generator must be instrument
-        var lastPresetGenertor = presetGenerators[presetGenerators.length - 1];
+        const lastPresetGenertor = presetGenerators[presetGenerators.length - 1];
         if (lastPresetGenertor.type !== "instrument" || isNaN(Number(lastPresetGenertor.value))) {
             throw new Error("Invalid SoundFont: invalid preset generator: expect instrument");
         }
-        var instrumentID = lastPresetGenertor.value;
-        var instrumentZones = this.getInstrumentZoneIndexes(instrumentID).map(function (i) { return _this.getInstrumentZone(i); });
+        const instrumentID = lastPresetGenertor.value;
+        const instrumentZones = this.getInstrumentZoneIndexes(instrumentID).map(i => this.getInstrumentZone(i));
         // 最初のゾーンがsampleID を持たなければ global instrument zone
-        var globalInstrumentZone;
-        var firstInstrumentZone = instrumentZones[0];
+        let globalInstrumentZone;
+        const firstInstrumentZone = instrumentZones[0];
         if (firstInstrumentZone.sampleID === undefined) {
             globalInstrumentZone = instrumentZones[0];
         }
         // keyRange と velRange がマッチしている Generator を探す
-        var instrumentZone = instrumentZones.find(function (i) {
+        const instrumentZone = instrumentZones.find(i => {
             if (i === globalInstrumentZone) {
                 return false; // global zone を除外
             }
-            var isInKeyRange = false;
+            let isInKeyRange = false;
             if (i.keyRange) {
                 isInKeyRange = key >= i.keyRange.lo && key <= i.keyRange.hi;
             }
-            var isInVelRange = true;
+            let isInVelRange = true;
             if (i.velRange) {
                 isInVelRange = velocity >= i.velRange.lo && velocity <= i.velRange.hi;
             }
@@ -776,20 +698,20 @@ var SoundFont = /** @class */ (function () {
         if (instrumentZone.sampleID === undefined) {
             throw new Error("Invalid SoundFont: sampleID not found");
         }
-        var gen = __assign({}, defaultInstrumentZone, removeUndefined(globalInstrumentZone || {}), removeUndefined(instrumentZone));
-        var sample = this.parsed.samples[gen.sampleID];
-        var sampleHeader = this.parsed.sampleHeaders[gen.sampleID];
-        var tune = gen.coarseTune + gen.fineTune / 100;
-        var basePitch = tune + (sampleHeader.pitchCorrection / 100) - (gen.overridingRootKey || sampleHeader.originalPitch);
-        var scaleTuning = gen.scaleTuning / 100;
+        const gen = Object.assign(Object.assign(Object.assign({}, defaultInstrumentZone), removeUndefined(globalInstrumentZone || {})), removeUndefined(instrumentZone));
+        const sample = this.parsed.samples[gen.sampleID];
+        const sampleHeader = this.parsed.sampleHeaders[gen.sampleID];
+        const tune = gen.coarseTune + gen.fineTune / 100;
+        const basePitch = tune + (sampleHeader.pitchCorrection / 100) - (gen.overridingRootKey || sampleHeader.originalPitch);
+        const scaleTuning = gen.scaleTuning / 100;
         return {
-            sample: sample,
+            sample,
             sampleRate: sampleHeader.sampleRate,
             sampleName: sampleHeader.sampleName,
             sampleModes: gen.sampleModes,
-            playbackRate: function (key) { return Math.pow(Math.pow(2, 1 / 12), (key + basePitch) * scaleTuning); },
+            playbackRate: (key) => Math.pow(Math.pow(2, 1 / 12), (key + basePitch) * scaleTuning),
             modEnvToPitch: gen.modEnvToPitch / 100,
-            scaleTuning: scaleTuning,
+            scaleTuning,
             start: gen.startAddrsCoarseOffset * 32768 + gen.startAddrsOffset,
             end: gen.endAddrsCoarseOffset * 32768 + gen.endAddrsOffset,
             loopStart: (sampleHeader.loopStart +
@@ -821,27 +743,26 @@ var SoundFont = /** @class */ (function () {
             mute: false,
             releaseTime: gen.releaseTime
         };
-    };
+    }
     // presetNames[bankNumber][presetNumber] = presetName
-    SoundFont.prototype.getPresetNames = function () {
-        var bank = {};
-        this.parsed.presetHeaders.forEach(function (preset) {
+    getPresetNames() {
+        const bank = {};
+        this.parsed.presetHeaders.forEach(preset => {
             if (!bank[preset.bank]) {
                 bank[preset.bank] = {};
             }
             bank[preset.bank][preset.preset] = preset.presetName;
         });
         return bank;
-    };
-    return SoundFont;
-}());
+    }
+}
 // value = 1200log2(sec) で表される時間を秒単位に変換する
 function convertTime(value) {
     return Math.pow(2, value / 1200);
 }
 function removeUndefined(obj) {
-    var result = {};
-    Object.keys(obj).forEach(function (key) {
+    const result = {};
+    Object.keys(obj).forEach(key => {
         if (obj[key] !== undefined) {
             result[key] = obj[key];
         }
@@ -849,12 +770,12 @@ function removeUndefined(obj) {
     return result;
 }
 function arrayRange(start, end) {
-    return Array.from({ length: end - start }, function (_, k) { return k + start; });
+    return Array.from({ length: end - start }, (_, k) => k + start);
 }
 // ひとつの instrument に対応する Generator の配列から使いやすくしたオブジェクトを返す
 function createInstrumentZone(instrumentGenerators) {
     function getValue(type) {
-        var generator = instrumentGenerators.find(function (g) { return g.type === type; });
+        const generator = instrumentGenerators.find(g => g.type === type);
         if (!generator) {
             return undefined;
         }
@@ -864,8 +785,8 @@ function createInstrumentZone(instrumentGenerators) {
         return generator.value;
     }
     // First Instrument Generator must be keyRange
-    var firstInstrumentGenerator = instrumentGenerators[0];
-    var keyRange;
+    const firstInstrumentGenerator = instrumentGenerators[0];
+    let keyRange;
     if (firstInstrumentGenerator && firstInstrumentGenerator.type === "keyRange") {
         if (!(firstInstrumentGenerator.value instanceof RangeValue)) {
             throw new Error("Invalid SoundFont: keyRange is not ranged value");
@@ -873,8 +794,8 @@ function createInstrumentZone(instrumentGenerators) {
         keyRange = firstInstrumentGenerator.value;
     }
     // Second Instrument Generator could be velRange
-    var secondInstrumentGenerator = instrumentGenerators[1];
-    var velRange;
+    const secondInstrumentGenerator = instrumentGenerators[1];
+    let velRange;
     if (secondInstrumentGenerator && secondInstrumentGenerator.type === "velRange") {
         if (!(secondInstrumentGenerator.value instanceof RangeValue)) {
             throw new Error("Invalid SoundFont: velRange is not ranged value");
@@ -882,8 +803,8 @@ function createInstrumentZone(instrumentGenerators) {
         velRange = secondInstrumentGenerator.value;
     }
     // Last Instrument Generator must be sampleID
-    var lastInstrumentGenerator = instrumentGenerators[instrumentGenerators.length - 1];
-    var sampleID;
+    const lastInstrumentGenerator = instrumentGenerators[instrumentGenerators.length - 1];
+    let sampleID;
     if (lastInstrumentGenerator && lastInstrumentGenerator.type === "sampleID") {
         if (isNaN(Number(lastInstrumentGenerator.value))) {
             throw new Error("Invalid SoundFont: sampleID is not number");
@@ -891,9 +812,9 @@ function createInstrumentZone(instrumentGenerators) {
         sampleID = lastInstrumentGenerator.value;
     }
     return {
-        keyRange: keyRange,
-        velRange: velRange,
-        sampleID: sampleID,
+        keyRange,
+        velRange,
+        sampleID,
         volAttack: getValue("attackVolEnv"),
         volDecay: getValue("decayVolEnv"),
         volDelay: getValue("delayVolEnv"),
@@ -926,7 +847,7 @@ function createInstrumentZone(instrumentGenerators) {
         pan: getValue("pan")
     };
 }
-var defaultInstrumentZone = {
+const defaultInstrumentZone = {
     keyRange: new RangeValue(0, 127),
     velRange: new RangeValue(0, 127),
     sampleID: undefined,
@@ -966,9 +887,9 @@ var defaultInstrumentZone = {
     pan: undefined
 };
 
-var BASE_VOLUME = 0.4;
-var Channel = /** @class */ (function () {
-    function Channel() {
+const BASE_VOLUME = 0.4;
+class Channel {
+    constructor() {
         this.instrument = 0;
         this.volume = 0;
         this.pitchBend = 0;
@@ -986,10 +907,9 @@ var Channel = /** @class */ (function () {
         this.cutOffFrequency = 0;
         this.mute = false;
     }
-    return Channel;
-}());
-var Synthesizer = /** @class */ (function () {
-    function Synthesizer(ctx) {
+}
+class Synthesizer {
+    constructor(ctx) {
         this.bufferSize = 1024;
         this.channels = [];
         this.masterVolume = 1.0;
@@ -998,9 +918,9 @@ var Synthesizer = /** @class */ (function () {
         this.setMasterVolume(this.masterVolume);
         this.init();
     }
-    Synthesizer.prototype.init = function () {
+    init() {
         this.channels = [];
-        for (var i = 0; i < 16; ++i) {
+        for (let i = 0; i < 16; ++i) {
             this.channels.push(new Channel());
             this.programChange(i, 0x00);
             this.volumeChange(i, 0x64);
@@ -1015,39 +935,39 @@ var Synthesizer = /** @class */ (function () {
             this.releaseTime(i, 0x40);
             this.setReverbDepth(i, 0x28);
         }
-    };
-    Synthesizer.prototype.loadSoundFont = function (input) {
-        var parser = parse(input);
+    }
+    loadSoundFont(input) {
+        const parser = parse(input);
         this.soundFont = new SoundFont(parser);
-    };
-    Synthesizer.prototype.connect = function (destination) {
+    }
+    connect(destination) {
         this.gainMaster.connect(destination);
-    };
-    Synthesizer.prototype.setMasterVolume = function (volume) {
-        var vol = BASE_VOLUME * volume / 0x8000;
+    }
+    setMasterVolume(volume) {
+        const vol = BASE_VOLUME * volume / 0x8000;
         this.masterVolume = volume;
         if (vol) {
             //this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
             this.gainMaster.gain.setTargetAtTime(BASE_VOLUME * volume / 0x8000, this.ctx.currentTime, 0.015);
         }
-    };
-    Synthesizer.prototype.noteOn = function (channelNumber, key, velocity) {
+    }
+    noteOn(channelNumber, key, velocity) {
         if (!this.soundFont) {
             return;
         }
-        var bankNumber = this.getBank(channelNumber);
-        var channel = this.channels[channelNumber];
+        const bankNumber = this.getBank(channelNumber);
+        const channel = this.channels[channelNumber];
         if (channel === undefined) {
             return;
         }
-        var noteInfo = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity);
+        const noteInfo = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity);
         if (!noteInfo) {
             return;
         }
-        var panpot = channel.panpot - 64;
+        let panpot = channel.panpot - 64;
         panpot /= panpot < 0 ? 64 : 63;
         // create note information
-        var instrumentKey = {
+        const instrumentKey = {
             channel: channelNumber,
             key: key,
             velocity: velocity,
@@ -1076,26 +996,26 @@ var Synthesizer = /** @class */ (function () {
             }
         }
         // note on
-        var note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey);
+        const note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey);
         note.noteOn();
         this.channels[channelNumber].currentNoteOn.push(note);
-    };
-    Synthesizer.prototype.noteOff = function (channelNumber, key, _velocity) {
+    }
+    noteOff(channelNumber, key, _velocity) {
         if (!this.soundFont) {
             return;
         }
-        var bankNumber = this.getBank(channelNumber);
-        var channel = this.channels[channelNumber];
+        const bankNumber = this.getBank(channelNumber);
+        const channel = this.channels[channelNumber];
         if (channel === undefined) {
             return;
         }
-        var instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key);
+        const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key);
         if (!instrumentKey) {
             return;
         }
-        var currentNoteOn = channel.currentNoteOn;
-        for (var i = 0, il = currentNoteOn.length; i < il; ++i) {
-            var note = currentNoteOn[i];
+        const currentNoteOn = channel.currentNoteOn;
+        for (let i = 0, il = currentNoteOn.length; i < il; ++i) {
+            const note = currentNoteOn[i];
             if (note.key === key) {
                 note.noteOff();
                 currentNoteOn.splice(i, 1);
@@ -1103,63 +1023,62 @@ var Synthesizer = /** @class */ (function () {
                 --il;
             }
         }
-    };
-    Synthesizer.prototype.hold = function (channelNumber, value) {
+    }
+    hold(channelNumber, value) {
         this.channels[channelNumber].hold = value;
-    };
-    Synthesizer.prototype.bankSelectMsb = function (channelNumber, value) {
+    }
+    bankSelectMsb(channelNumber, value) {
         this.channels[channelNumber].bankMsb = value;
-    };
-    Synthesizer.prototype.bankSelectLsb = function (channelNumber, value) {
+    }
+    bankSelectLsb(channelNumber, value) {
         this.channels[channelNumber].bankLsb = value;
-    };
-    Synthesizer.prototype.programChange = function (channelNumber, instrument) {
+    }
+    programChange(channelNumber, instrument) {
         this.channels[channelNumber].instrument = instrument;
-    };
-    Synthesizer.prototype.volumeChange = function (channelNumber, volume) {
+    }
+    volumeChange(channelNumber, volume) {
         this.channels[channelNumber].volume = volume;
-    };
-    Synthesizer.prototype.expression = function (channelNumber, expression) {
-        var currentNoteOn = this.channels[channelNumber].currentNoteOn;
-        for (var i = 0, il = currentNoteOn.length; i < il; ++i) {
+    }
+    expression(channelNumber, expression) {
+        const currentNoteOn = this.channels[channelNumber].currentNoteOn;
+        for (let i = 0, il = currentNoteOn.length; i < il; ++i) {
             currentNoteOn[i].updateExpression(expression);
         }
         this.channels[channelNumber].expression = expression;
-    };
-    
-    Synthesizer.prototype.panpotChange = function (channelNumber, panpot) {
+    }
+    ;
+    panpotChange(channelNumber, panpot) {
         this.channels[channelNumber].panpot = panpot;
-    };
-    Synthesizer.prototype.pitchBend = function (channelNumber, pitchBend) {
+    }
+    pitchBend(channelNumber, pitchBend) {
         pitchBend -= 0x2000;
-        var channel = this.channels[channelNumber];
-        for (var _i = 0, _a = channel.currentNoteOn; _i < _a.length; _i++) {
-            var note = _a[_i];
+        const channel = this.channels[channelNumber];
+        for (let note of channel.currentNoteOn) {
             note.updatePitchBend(pitchBend);
         }
         channel.pitchBend = pitchBend;
-    };
-    Synthesizer.prototype.pitchBendSensitivity = function (channelNumber, sensitivity) {
+    }
+    pitchBendSensitivity(channelNumber, sensitivity) {
         this.channels[channelNumber].pitchBendSensitivity = sensitivity;
-    };
-    Synthesizer.prototype.releaseTime = function (channelNumber, releaseTime) {
+    }
+    releaseTime(channelNumber, releaseTime) {
         this.channels[channelNumber].releaseTime = releaseTime;
-    };
-    Synthesizer.prototype.allSoundOff = function (channelNumber) {
-        var currentNoteOn = this.channels[channelNumber].currentNoteOn;
+    }
+    allSoundOff(channelNumber) {
+        const currentNoteOn = this.channels[channelNumber].currentNoteOn;
         while (currentNoteOn.length > 0) {
             this.noteOff(channelNumber, currentNoteOn[0].key, 0);
         }
-    };
-    Synthesizer.prototype.resetAllControl = function (channelNumber) {
+    }
+    resetAllControl(channelNumber) {
         this.pitchBend(channelNumber, 0);
-    };
-    Synthesizer.prototype.setReverbDepth = function (channelNumber, depth) {
+    }
+    setReverbDepth(channelNumber, depth) {
         this.channels[channelNumber].reverb = depth;
-    };
-    Synthesizer.prototype.getBank = function (channelNumber) {
-        var bankIndex = 0;
-        var channel = this.channels[channelNumber];
+    }
+    getBank(channelNumber) {
+        let bankIndex = 0;
+        const channel = this.channels[channelNumber];
         if (channel === undefined) {
             return 0;
         }
@@ -1206,14 +1125,13 @@ var Synthesizer = /** @class */ (function () {
         //this.channelInstrument[channel] = 0;
         //}
         return bankIndex;
-    };
-    Synthesizer.prototype.setPercussionPart = function (channelNumber, sw) {
+    }
+    setPercussionPart(channelNumber, sw) {
         this.channels[channelNumber].isPercussionPart = sw;
-    };
-    return Synthesizer;
-}());
+    }
+}
 
-var ProgramNames = {
+const ProgramNames = {
     /**
      * GM Synth set
      * http://amei.or.jp/midistandardcommittee/Recommended_Practice/GM2_japanese.pdf
@@ -1413,220 +1331,221 @@ var ProgramNames = {
 };
 
 function render(str) {
-    var wrapper = document.createElement("div");
+    const wrapper = document.createElement("div");
     wrapper.innerHTML = str.replace(/^\s+/, "");
     return wrapper.firstElementChild;
 }
 function renderKeys() {
-    var html = "";
-    for (var i = 0; i < 128; i++) {
-        var n = i % 12;
-        var isBlack = [1, 3, 6, 8, 10].includes(n);
-        html += "<div class=\"key " + (isBlack ? "black" : "white") + "\"></div>";
+    let html = "";
+    for (let i = 0; i < 128; i++) {
+        const n = i % 12;
+        const isBlack = [1, 3, 6, 8, 10].includes(n);
+        html += `<div class="key ${isBlack ? "black" : "white"}"></div>`;
     }
     return html;
 }
 function renderProgramOptions(programNames, bank) {
-    var html = "";
-    var names = programNames[bank];
-    for (var i in names) {
-        var name = names[i];
+    let html = "";
+    const names = programNames[bank];
+    for (let i in names) {
+        const name = names[i];
         if (name == "None (None)")
             continue;
-        html += "<option value=\"" + i + "\">" + i + ": " + name + "</option>";
+        html += `<option value="${i}">${i}: ${name}</option>`;
     }
-    return "<select>" + html + "</select>";
+    return `<select>${html}</select>`;
 }
 function renderInstrument(program) {
-    return render("\n    <div class=\"instrument\">\n      <div class=\"program\">" + program + "</div>\n      <div class=\"volume\"></div>\n      <div class=\"panpot\"></div>\n      <div class=\"pitchBend\"></div>\n      <div class=\"pitchBendSensitivity\"></div>\n      <div class=\"keys\">" + renderKeys() + "</div>\n    </div>\n  ");
+    return render(`
+    <div class="instrument">
+      <div class="program">${program}</div>
+      <div class="volume"></div>
+      <div class="panpot"></div>
+      <div class="pitchBend"></div>
+      <div class="pitchBendSensitivity"></div>
+      <div class="keys">${renderKeys()}</div>
+    </div>
+  `);
 }
 function programNamesFromBankSet(bankSet) {
     //return objectMap(bankSet, bank => objectMap(bank, s => s.name))
-    var result = {};
-    Object.keys(bankSet).forEach(function (no) {
+    let result = {};
+    Object.keys(bankSet).forEach(no => {
         result[no] = bankSet[no];
     });
     return result;
 }
 function mergeProgramNames(left, right) {
     function mergedKeys(a, b) {
-        return new Set(Object.keys(a).concat(Object.keys(b)));
+        return new Set([...Object.keys(a), ...Object.keys(b)]);
     }
-    var banks = mergedKeys(left, right);
-    var result = {};
-    banks.forEach(function (bank) {
-        var l = left[bank] || [];
-        var r = right[bank] || [];
-        var list = {};
-        var programs = mergedKeys(l, r);
-        programs.forEach(function (p) {
-            list[p] = (l[p] || "None") + " (" + (r[p] || "None") + ")";
+    const banks = mergedKeys(left, right);
+    const result = {};
+    banks.forEach(bank => {
+        const l = left[bank] || [];
+        const r = right[bank] || [];
+        const list = {};
+        const programs = mergedKeys(l, r);
+        programs.forEach(p => {
+            list[p] = `${l[p] || "None"} (${r[p] || "None"})`;
         });
         result[bank] = list;
     });
     return result;
 }
-var View = /** @class */ (function () {
-    function View() {
+class View {
+    constructor() {
         this.drag = false;
     }
-    View.prototype.draw = function (synth) {
-        var _this = this;
-        var element = this.element = render("<div />");
-        var programNames = mergeProgramNames(programNamesFromBankSet(synth.soundFont.getPresetNames()), ProgramNames);
-        var _loop_1 = function (i) {
-            var bank = i !== 9 ? 0 : 128;
-            var program = renderProgramOptions(programNames, bank);
-            var item = renderInstrument(program);
-            var channel = i;
-            var select = item.querySelector('select');
+    draw(synth) {
+        const element = this.element = render(`<div />`);
+        const programNames = mergeProgramNames(programNamesFromBankSet(synth.soundFont.getPresetNames()), ProgramNames);
+        for (let i = 0; i < 16; ++i) {
+            const bank = i !== 9 ? 0 : 128;
+            const program = renderProgramOptions(programNames, bank);
+            const item = renderInstrument(program);
+            const channel = i;
+            const select = item.querySelector('select');
             if (select) {
-                select.addEventListener('change', function (event) {
-                    var target = event.target;
-                    var program = parseInt(target.value, 10);
-                    _this.programChange(channel, program);
+                select.addEventListener('change', event => {
+                    const target = event.target;
+                    const program = parseInt(target.value, 10);
+                    this.programChange(channel, program);
                     synth.programChange(channel, program);
                 }, false);
                 select.selectedIndex = synth.channels[i].instrument;
             }
-            var notes = item.querySelectorAll(".key");
-            var _loop_2 = function (j) {
-                var key = j;
-                notes[j].addEventListener('mousedown', function (event) {
+            const notes = item.querySelectorAll(".key");
+            for (let j = 0; j < 128; ++j) {
+                const key = j;
+                notes[j].addEventListener('mousedown', event => {
                     event.preventDefault();
-                    _this.drag = true;
-                    _this.noteOn(channel, key, 127);
+                    this.drag = true;
+                    this.noteOn(channel, key, 127);
                     synth.noteOn(channel, key, 127);
-                    var onMouseUp = function (event) {
+                    const onMouseUp = event => {
                         document.removeEventListener('mouseup', onMouseUp);
                         event.preventDefault();
-                        _this.drag = false;
-                        _this.noteOff(channel, key, 0);
+                        this.drag = false;
+                        this.noteOff(channel, key, 0);
                         synth.noteOff(channel, key, 0);
                     };
                     document.addEventListener('mouseup', onMouseUp);
                 });
-                notes[j].addEventListener('mouseover', function (event) {
+                notes[j].addEventListener('mouseover', event => {
                     event.preventDefault();
-                    if (_this.drag) {
-                        _this.noteOn(channel, key, 127);
+                    if (this.drag) {
+                        this.noteOn(channel, key, 127);
                         synth.noteOn(channel, key, 127);
                     }
                 });
-                notes[j].addEventListener('mouseout', function (event) {
+                notes[j].addEventListener('mouseout', event => {
                     event.preventDefault();
-                    _this.noteOff(channel, key, 0);
+                    this.noteOff(channel, key, 0);
                     synth.noteOff(channel, key, 0);
                 });
-            };
-            for (var j = 0; j < 128; ++j) {
-                _loop_2(j);
             }
             element.appendChild(item);
-        };
-        for (var i = 0; i < 16; ++i) {
-            _loop_1(i);
         }
         return element;
-    };
-    View.prototype.remove = function () {
+    }
+    remove() {
         if (!this.element) {
             return;
         }
         this.element.parentNode.removeChild(this.element);
         this.element = null;
-    };
-    View.prototype.getInstrumentElement = function (channel) {
+    }
+    getInstrumentElement(channel) {
         if (!this.element) {
             return null;
         }
         return this.element.querySelectorAll(".instrument")[channel];
-    };
-    View.prototype.getKeyElement = function (channel, key) {
-        var elem = this.getInstrumentElement(channel);
+    }
+    getKeyElement(channel, key) {
+        const elem = this.getInstrumentElement(channel);
         if (!elem) {
             return null;
         }
         return elem.querySelectorAll(".key")[key];
-    };
-    View.prototype.findInstrumentElement = function (channel, query) {
-        var elem = this.getInstrumentElement(channel);
+    }
+    findInstrumentElement(channel, query) {
+        const elem = this.getInstrumentElement(channel);
         if (!elem) {
             return null;
         }
         return elem.querySelector(query);
-    };
-    View.prototype.noteOn = function (channel, key, _velocity) {
-        var element = this.getKeyElement(channel, key);
+    }
+    noteOn(channel, key, _velocity) {
+        const element = this.getKeyElement(channel, key);
         if (element) {
             element.classList.add('note-on');
         }
-    };
-    View.prototype.noteOff = function (channel, key, _velocity) {
-        var element = this.getKeyElement(channel, key);
+    }
+    noteOff(channel, key, _velocity) {
+        const element = this.getKeyElement(channel, key);
         if (element) {
             element.classList.remove('note-on');
         }
-    };
-    View.prototype.programChange = function (channel, instrument) {
-        var select = this.findInstrumentElement(channel, ".program select");
+    }
+    programChange(channel, instrument) {
+        const select = this.findInstrumentElement(channel, ".program select");
         if (select) {
-            select.value = "" + instrument;
+            select.value = `${instrument}`;
         }
-    };
-    View.prototype.volumeChange = function (channel, volume) {
-        var element = this.findInstrumentElement(channel, ".volume");
+    }
+    volumeChange(channel, volume) {
+        const element = this.findInstrumentElement(channel, ".volume");
         if (element) {
-            element.textContent = "" + volume;
+            element.textContent = `${volume}`;
         }
-    };
-    View.prototype.panpotChange = function (channel, panpot) {
-        var element = this.findInstrumentElement(channel, ".panpot");
+    }
+    panpotChange(channel, panpot) {
+        const element = this.findInstrumentElement(channel, ".panpot");
         if (element) {
-            element.textContent = "" + panpot;
+            element.textContent = `${panpot}`;
         }
-    };
-    View.prototype.pitchBend = function (channel, pitchBend) {
-        var element = this.findInstrumentElement(channel, ".pitchBend");
+    }
+    pitchBend(channel, pitchBend) {
+        const element = this.findInstrumentElement(channel, ".pitchBend");
         if (element) {
-            element.textContent = "" + pitchBend;
+            element.textContent = `${pitchBend}`;
         }
-    };
-    View.prototype.pitchBendSensitivity = function (channel, sensitivity) {
-        var element = this.findInstrumentElement(channel, ".pitchBendSensitivity");
+    }
+    pitchBendSensitivity(channel, sensitivity) {
+        const element = this.findInstrumentElement(channel, ".pitchBendSensitivity");
         if (element) {
-            element.textContent = "" + sensitivity;
+            element.textContent = `${sensitivity}`;
         }
-    };
-    View.prototype.allSoundOff = function (_channelNumber) {
-    };
-    View.prototype.setMasterVolume = function (_volume) {
-    };
-    View.prototype.resetAllControl = function (_channelNumber) {
-    };
-    View.prototype.init = function () {
-    };
-    View.prototype.expression = function (_value) {
-    };
-    return View;
-}());
+    }
+    allSoundOff(_channelNumber) {
+    }
+    setMasterVolume(_volume) {
+    }
+    resetAllControl(_channelNumber) {
+    }
+    init() {
+    }
+    expression(_value) {
+    }
+}
 
-var MidiMessageHandler = /** @class */ (function () {
-    function MidiMessageHandler() {
+class MidiMessageHandler {
+    constructor() {
         this.RpnMsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         this.RpnLsb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     }
-    MidiMessageHandler.prototype.processMidiMessage = function (message) {
-        var channel = message[0] & 0x0f;
-        var listener = this.listener;
+    processMidiMessage(message) {
+        const channel = message[0] & 0x0f;
+        const { listener } = this;
         if (listener === undefined) {
             return;
         }
         switch (message[0] & 0xf0) {
-            case 0x80:// NoteOff: 8n kk vv
+            case 0x80: // NoteOff: 8n kk vv
                 listener.noteOff(channel, message[1], message[2]);
                 break;
-            case 0x90:// NoteOn: 9n kk vv
+            case 0x90: // NoteOn: 9n kk vv
                 if (message[2] > 0) {
                     listener.noteOn(channel, message[1], message[2]);
                 }
@@ -1634,13 +1553,13 @@ var MidiMessageHandler = /** @class */ (function () {
                     listener.noteOff(channel, message[1], 0);
                 }
                 break;
-            case 0xB0:// Control Change: Bn cc dd
+            case 0xB0: // Control Change: Bn cc dd
                 switch (message[1]) {
-                    case 0x06:// Data Entry: Bn 06 dd
+                    case 0x06: // Data Entry: Bn 06 dd
                         switch (this.RpnMsb[channel]) {
                             case 0:
                                 switch (this.RpnLsb[channel]) {
-                                    case 0:// Pitch Bend Sensitivity
+                                    case 0: // Pitch Bend Sensitivity
                                         listener.pitchBendSensitivity(channel, message[2]);
                                         break;
                                     default:
@@ -1651,63 +1570,64 @@ var MidiMessageHandler = /** @class */ (function () {
                                 break;
                         }
                         break;
-                    case 0x07:// Volume Change: Bn 07 dd
+                    case 0x07: // Volume Change: Bn 07 dd
                         listener.volumeChange(channel, message[2]);
                         break;
-                    case 0x0A:// Panpot Change: Bn 0A dd
+                    case 0x0A: // Panpot Change: Bn 0A dd
                         listener.panpotChange(channel, message[2]);
                         break;
-                    case 0x78:// All Sound Off: Bn 78 00
+                    case 0x78: // All Sound Off: Bn 78 00
                         listener.allSoundOff(channel);
                         break;
-                    case 0x79:// Reset All Control: Bn 79 00
+                    case 0x79: // Reset All Control: Bn 79 00
                         listener.resetAllControl(channel);
                         break;
-                    case 0x20:// BankSelect
+                    case 0x20: // BankSelect
                         //console.log("bankselect:", channel, message[2])
                         break;
-                    case 0x64:// RPN MSB
+                    case 0x64: // RPN MSB
                         this.RpnMsb[channel] = message[2];
                         break;
-                    case 0x65:// RPN LSB
+                    case 0x65: // RPN LSB
                         this.RpnLsb[channel] = message[2];
                         break;
-                    case 0x40:// Hold
+                    case 0x40: // Hold
                         listener.hold(channel, message[2] !== 0);
                         break;
-                    case 0x0b:// Expression
+                    case 0x0b: // Expression
                         listener.expression(channel, message[2]);
                         break;
-                    case 0x47:// Cutoff Fequency (Brightness)
+                    case 0x47: // Cutoff Fequency (Brightness)
                         // listener.cutOffFrequency[channel] = message[2];
                         break;
-                    case 0x48:// DecayTyme
+                    case 0x48: // DecayTyme
                         // synth.decayTime[channel] = value;
                         break;
-                    case 0x49:// ReleaseTime
+                    case 0x49: // ReleaseTime
                         listener.releaseTime(channel, message[2]);
                         break;
-                    case 0x4A:// Hermonic Content (Resonance)
+                    case 0x4A: // Hermonic Content (Resonance)
                         // listener.harmonicContent[channel] = message[2];
                         break;
-                    case 0x5B:// Effect1 Depth（Reverb Send Level）
+                    case 0x5B: // Effect1 Depth（Reverb Send Level）
                         listener.setReverbDepth(channel, message[2]);
                         break;
                     default:
+                    // not supported
                 }
                 break;
-            case 0xC0:// Program Change: Cn pp
+            case 0xC0: // Program Change: Cn pp
                 listener.programChange(channel, message[1]);
                 break;
-            case 0xE0: {
-                var bend = ((message[1] & 0x7f) | ((message[2] & 0x7f) << 7));
+            case 0xE0: { // Pitch Bend
+                const bend = ((message[1] & 0x7f) | ((message[2] & 0x7f) << 7));
                 listener.pitchBend(channel, bend);
                 break;
             }
-            case 0xf0:// System Exclusive Message
+            case 0xf0: // System Exclusive Message
                 // ID number
                 switch (message[1]) {
-                    case 0x7e:// non-realtime
+                    case 0x7e: // non-realtime
                         // GM Reset: F0 7E 7F 09 01 F7
                         if (message[2] === 0x7f && message[3] === 0x09 && message[4] === 0x01) {
                             listener.isXG = false;
@@ -1715,16 +1635,16 @@ var MidiMessageHandler = /** @class */ (function () {
                             listener.init();
                         }
                         break;
-                    case 0x7f:// realtime
+                    case 0x7f: // realtime
                         // const device = message[2]
                         // sub ID 1
                         switch (message[3]) {
-                            case 0x04:// device control
+                            case 0x04: // device control
                                 // sub ID 2
                                 switch (message[4]) {
-                                    case 0x01: {
-                                        var volume = message[5] + (message[6] << 7);
-                                        var MAX_VOLUME = 0x4000 - 1;
+                                    case 0x01: { // master volume
+                                        const volume = message[5] + (message[6] << 7);
+                                        const MAX_VOLUME = 0x4000 - 1;
                                         listener.setMasterVolume(volume / MAX_VOLUME);
                                         break;
                                     }
@@ -1741,11 +1661,11 @@ var MidiMessageHandler = /** @class */ (function () {
                 }
                 // Vendor
                 switch (message[2]) {
-                    case 0x43:// Yamaha XG
+                    case 0x43: // Yamaha XG
                         if (message[5] === 0x08) {
                             // XG Dram Part: F0 43 [dev] 4C 08 [partNum] 07 [map] F7
                             // but there is no file to use much this parameter...
-                            if (message[7] !== 0x00) {
+                            if (message[7] !== 0x00) { // [map]
                                 listener.setPercussionPart(message[6], true);
                             }
                             else {
@@ -1766,7 +1686,7 @@ var MidiMessageHandler = /** @class */ (function () {
                                 break;
                         }
                         break;
-                    case 0x41:// Roland GS / TG300B Mode
+                    case 0x41: // Roland GS / TG300B Mode
                         // TODO
                         switch (message[8]) {
                             case 0x04:
@@ -1817,29 +1737,27 @@ var MidiMessageHandler = /** @class */ (function () {
                         break;
                 }
                 break;
-            default:// not supported
+            default: // not supported
                 break;
         }
-    };
-    return MidiMessageHandler;
-}());
+    }
+}
 
 // delegates method calls to multiple targets
 function delegateProxy(targets) {
     return new Proxy(targets[0], {
-        get: function (target, propKey, _receiver) {
-            return function () {
+        get(target, propKey, _receiver) {
+            return () => {
                 targets
-                    .map(function (t) { return t[propKey].bind(target); })
-                    .forEach(function (f) { return f.apply(void 0, arguments); });
+                    .map(t => t[propKey].bind(target))
+                    .forEach(f => f(...arguments));
             };
         }
     });
 }
 
-var WebMidiLink = /** @class */ (function () {
-    function WebMidiLink(target) {
-        if (target === void 0) { target = ".synth"; }
+class WebMidiLink {
+    constructor(target = ".synth") {
         this.ready = false;
         this.midiMessageHandler = new MidiMessageHandler();
         this.target = document.body.querySelector(target);
@@ -1859,7 +1777,7 @@ var WebMidiLink = /** @class */ (function () {
             this.ready = true;
         }.bind(this), false);
     }
-    WebMidiLink.prototype.setup = function (url) {
+    setup(url) {
         if (!this.ready) {
             window.addEventListener('DOMContentLoaded', function onload() {
                 window.removeEventListener('DOMContentLoaded', onload, false);
@@ -1869,15 +1787,15 @@ var WebMidiLink = /** @class */ (function () {
         else {
             this.load(url);
         }
-    };
-    WebMidiLink.prototype.load = function (url) {
-        var xhr = new XMLHttpRequest();
-        var progress = this.target.appendChild(document.createElement('progress'));
-        var percentage = progress.parentNode.insertBefore(document.createElement('outpout'), progress.nextElementSibling);
+    }
+    load(url) {
+        const xhr = new XMLHttpRequest();
+        const progress = this.target.appendChild(document.createElement('progress'));
+        const percentage = progress.parentNode.insertBefore(document.createElement('outpout'), progress.nextElementSibling);
         xhr.open('GET', url, true);
         xhr.responseType = 'arraybuffer';
         xhr.addEventListener('load', function (ev) {
-            var xhr = ev.target;
+            const xhr = ev.target;
             this.onload(xhr.response);
             this.target.removeChild(progress);
             this.target.removeChild(percentage);
@@ -1894,19 +1812,19 @@ var WebMidiLink = /** @class */ (function () {
                 this.wml.postMessage('link,progress,' + e.loaded + ',' + e.total, '*');
         }.bind(this), false);
         xhr.send();
-    };
-    WebMidiLink.prototype.onload = function (response) {
-        var input = new Uint8Array(response);
+    }
+    onload(response) {
+        const input = new Uint8Array(response);
         this.loadSoundFont(input);
-    };
-    WebMidiLink.prototype.loadSoundFont = function (input) {
-        var synth;
+    }
+    loadSoundFont(input) {
+        let synth;
         if (!this.synth) {
-            var ctx = new AudioContext();
+            const ctx = new AudioContext();
             synth = this.synth = new Synthesizer(ctx);
             synth.connect(ctx.destination);
             synth.loadSoundFont(input);
-            var view = this.view = new View();
+            const view = this.view = new View();
             this.target.appendChild(view.draw(synth));
             this.midiMessageHandler.listener = delegateProxy([synth, view]);
             window.addEventListener('message', this.onmessage.bind(this), false);
@@ -1918,10 +1836,10 @@ var WebMidiLink = /** @class */ (function () {
         // link ready
         if (this.wml)
             this.wml.postMessage("link,ready", '*');
-    };
-    WebMidiLink.prototype.onmessage = function (ev) {
-        var msg = ev.data.split(',');
-        var type = msg.shift();
+    }
+    onmessage(ev) {
+        const msg = ev.data.split(',');
+        const type = msg.shift();
         switch (type) {
             case 'midi':
                 this.midiMessageHandler.processMidiMessage(msg.map(function (hex) {
@@ -1929,7 +1847,7 @@ var WebMidiLink = /** @class */ (function () {
                 }));
                 break;
             case 'link':
-                var command = msg.shift();
+                const command = msg.shift();
                 switch (command) {
                     case 'reqpatch':
                         // TODO: dummy data
@@ -1947,12 +1865,11 @@ var WebMidiLink = /** @class */ (function () {
             default:
                 console.error('unknown message type');
         }
-    };
-    WebMidiLink.prototype.setLoadCallback = function (callback) {
+    }
+    setLoadCallback(callback) {
         this.loadCallback = callback;
-    };
-    return WebMidiLink;
-}());
+    }
+}
 
 export { WebMidiLink, Synthesizer, View, MidiMessageHandler, delegateProxy };
 //# sourceMappingURL=sf2.synth.esm.js.map
