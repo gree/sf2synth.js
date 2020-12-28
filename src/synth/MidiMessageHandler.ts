@@ -1,4 +1,3 @@
-import Synthesizer from "./Synthesizer"
 export interface Listener {
   init()
   noteOn(channel: number, key: number, velocity: number)
@@ -194,7 +193,7 @@ export default class MidiMessageHandler {
                 // http://www.roland.co.jp/support/by_product/sd-20/knowledge_base/1826700/
 
                 var part = message[7] - 0x0F;
-                var map = message[8];
+                var map: number = message[8];
                 if (part === 0) {
                   // 10 Ch.
                   if (map !== 0x00) {

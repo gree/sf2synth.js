@@ -42,14 +42,6 @@ function renderInstrument(program): Element {
   `)
 }
 
-function objectMap(o, func) {
-  const result = {}
-  Object.keys(o).forEach(key => {
-    result[key] = func(o[key])
-  })
-  return result
-}
-
 function programNamesFromBankSet(bankSet) {
   //return objectMap(bankSet, bank => objectMap(bank, s => s.name))
   let result = {}
@@ -79,6 +71,8 @@ function mergeProgramNames(left: { [index: number]: (string | null)[] }, right: 
 }
 
 export default class View implements Listener {
+  isXG: boolean
+  isGS: boolean
   private element: Element | null
   private drag: boolean = false
 
@@ -237,5 +231,17 @@ export default class View implements Listener {
   }
   expression(_value: number) {
 
+  }
+
+  setPercussionPart(_channelNumber: number, _sw: boolean) {
+  }
+
+  hold(_channelNumber: number, _sw: boolean) {
+  }
+
+  setReverbDepth(_channelNumber: number, _depth: number) {
+  }
+
+  releaseTime(_channelNumber: number, _value: number) {
   }
 }
