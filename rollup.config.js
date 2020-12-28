@@ -1,6 +1,6 @@
-import typescript from 'rollup-plugin-typescript'
-import sourcemaps from 'rollup-plugin-sourcemaps';
-import serve from 'rollup-plugin-serve'
+import typescript from "rollup-plugin-typescript"
+import sourcemaps from "rollup-plugin-sourcemaps"
+import serve from "rollup-plugin-serve"
 
 function create(name) {
   return {
@@ -8,26 +8,24 @@ function create(name) {
     input: `export/${name}.ts`,
     plugins: [
       typescript({
-        typescript: require("typescript")
+        typescript: require("typescript"),
       }),
-      sourcemaps()
+      sourcemaps(),
     ],
-    output: [{
+    output: [
+      {
         file: `public/js/sf2.${name}.js`,
         format: "umd",
       },
       {
         file: `public/js/sf2.${name}.esm.js`,
-        format: "es"
-      }
+        format: "es",
+      },
     ],
-    sourceMap: true
-  };
+    sourceMap: true,
+  }
 }
 
-export default [
-  create("parser"),
-  create("synth")
-];
+export default [create("parser"), create("synth")]
 
-serve('public');
+serve("public")

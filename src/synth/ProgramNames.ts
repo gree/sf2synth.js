@@ -131,7 +131,7 @@ const ProgramNames: { [index: number]: (string | null)[] } = {
     "Telephone Ring",
     "Helicopter",
     "Applause",
-    "Gunshot"
+    "Gunshot",
   ],
   /**
    * GM2 Drum Set List
@@ -193,8 +193,8 @@ const ProgramNames: { [index: number]: (string | null)[] } = {
     null,
     null,
     null,
-    "SFX Set"
-  ]
+    "SFX Set",
+  ],
 }
 
 export default ProgramNames

@@ -1,7 +1,7 @@
 const fs = require("fs")
 import parse from "./Parser"
 
-describe('Parser', () => {
+describe("Parser", () => {
   const input = fs.readFileSync("./fixture/TestSoundFont.sf2")
   const parser = parse(input)
 

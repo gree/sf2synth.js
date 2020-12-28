@@ -10,12 +10,12 @@
   padding-top: 0.25em;
 }
 
-.synth .keys>div {
+.synth .keys > div {
   float: left;
 }
 
-.synth .keys>.white,
-.keys>.black {
+.synth .keys > .white,
+.keys > .black {
   position: relative;
 }
 
@@ -25,7 +25,7 @@
   -webkit-app-region: no-drag;
 }
 
-.synth .keys>.white {
+.synth .keys > .white {
   width: 5px;
   height: 20px;
   background: rgb(85, 85, 90);
@@ -33,7 +33,7 @@
   box-sizing: border-box;
 }
 
-.synth .keys>.black {
+.synth .keys > .black {
   width: 3px;
   background: rgb(0, 0, 0);
   height: 11px;

@@ -1,5 +1,14 @@
 import { parseRiff, Chunk, Options as RiffParserOptions } from "./RiffParser"
-import { PresetHeader, SampleHeader, PresetBag, Instrument, InstrumentBag, ModulatorList, GeneratorList, Info } from "./Structs"
+import {
+  PresetHeader,
+  SampleHeader,
+  PresetBag,
+  Instrument,
+  InstrumentBag,
+  ModulatorList,
+  GeneratorList,
+  Info,
+} from "./Structs"
 import Stream from "./Stream"
 
 export interface ParseResult {
@@ -17,25 +26,27 @@ export interface ParseResult {
   info: Info
 }
 
-export default function parse(input: Uint8Array, option: RiffParserOptions = {}): ParseResult {
-
+export default function parse(
+  input: Uint8Array,
+  option: RiffParserOptions = {}
+): ParseResult {
   // parse RIFF chunk
   const chunkList = parseRiff(input, 0, input.length, option)
 
   if (chunkList.length !== 1) {
-    throw new Error('wrong chunk length')
+    throw new Error("wrong chunk length")
   }
 
   const chunk = chunkList[0]
   if (chunk === null) {
-    throw new Error('chunk not found')
+    throw new Error("chunk not found")
   }
 
   function parseRiffChunk(chunk: Chunk, data: Uint8Array) {
     const chunkList = getChunkList(chunk, data, "RIFF", "sfbk")
 
     if (chunkList.length !== 3) {
-      throw new Error('invalid sfbk structure')
+      throw new Error("invalid sfbk structure")
     }
 
     return {
@@ -46,7 +57,7 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
       samplingData: parseSdtaList(chunkList[1], data),
 
       // pdta-list
-      ...parsePdtaList(chunkList[2], data)
+      ...parsePdtaList(chunkList[2], data),
     }
   }
 
@@ -55,7 +66,7 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
 
     // check number of chunks
     if (chunkList.length !== 9) {
-      throw new Error('invalid pdta chunk')
+      throw new Error("invalid pdta chunk")
     }
 
     return {
@@ -67,7 +78,7 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
       instrumentZone: parseIbag(chunkList[5], data),
       instrumentModulators: parseImod(chunkList[6], data),
       instrumentGenerators: parseIgen(chunkList[7], data),
-      sampleHeaders: parseShdr(chunkList[8], data)
+      sampleHeaders: parseShdr(chunkList[8], data),
     }
   }
 
@@ -75,14 +86,18 @@ export default function parse(input: Uint8Array, option: RiffParserOptions = {})
 
   return {
     ...result,
-    samples: loadSample(result.sampleHeaders, result.samplingData.offset, input)
+    samples: loadSample(
+      result.sampleHeaders,
+      result.samplingData.offset,
+      input
+    ),
   }
 }
 
 function getChunkList(chunk, data, expectedType, expectedSignature) {
   // check parse target
   if (chunk.type !== expectedType) {
-    throw new Error('invalid chunk type:' + chunk.type)
+    throw new Error("invalid chunk type:" + chunk.type)
   }
 
   const stream = new Stream(data, chunk.offset)
@@ -90,7 +105,7 @@ function getChunkList(chunk, data, expectedType, expectedSignature) {
   // check signature
   const signature = stream.readString(4)
   if (signature !== expectedSignature) {
-    throw new Error('invalid signature:' + signature)
+    throw new Error("invalid signature:" + signature)
   }
 
   // read structure
@@ -106,22 +121,28 @@ function parseSdtaList(chunk: Chunk, data: Uint8Array): Chunk {
   const chunkList = getChunkList(chunk, data, "LIST", "sdta")
 
   if (chunkList.length !== 1) {
-    throw new Error('TODO')
+    throw new Error("TODO")
   }
 
   return chunkList[0]
 }
 
-function parseChunk<T>(chunk: Chunk, data: Uint8Array, type: string, clazz: { parse: (stream: Stream) => T }, terminate?: (obj: T) => boolean): T[] {
+function parseChunk<T>(
+  chunk: Chunk,
+  data: Uint8Array,
+  type: string,
+  clazz: { parse: (stream: Stream) => T },
+  terminate?: (obj: T) => boolean
+): T[] {
   const result: T[] = []
 
   if (chunk.type !== type) {
-    throw new Error('invalid chunk type:'  + chunk.type)
+    throw new Error("invalid chunk type:" + chunk.type)
   }
-  
+
   const stream = new Stream(data, chunk.offset)
   const size = chunk.offset + chunk.size
-  
+
   while (stream.ip < size) {
     const obj = clazz.parse(stream)
     if (terminate && terminate(obj)) {
@@ -133,15 +154,23 @@ function parseChunk<T>(chunk: Chunk, data: Uint8Array, type: string, clazz: { pa
   return result
 }
 
-const parsePhdr = (chunk, data) => parseChunk(chunk, data, "phdr", PresetHeader, p => p.isEnd)
+const parsePhdr = (chunk, data) =>
+  parseChunk(chunk, data, "phdr", PresetHeader, (p) => p.isEnd)
 const parsePbag = (chunk, data) => parseChunk(chunk, data, "pbag", PresetBag)
-const parseInst = (chunk, data) => parseChunk(chunk, data, "inst", Instrument, i => i.isEnd)
-const parseIbag = (chunk, data) => parseChunk(chunk, data, "ibag", InstrumentBag)
-const parsePmod = (chunk, data) => parseChunk(chunk, data, "pmod", ModulatorList, m => m.isEnd)
-const parseImod = (chunk, data) => parseChunk(chunk, data, "imod", ModulatorList, m => m.isEnd)
-const parsePgen = (chunk, data) => parseChunk(chunk, data, "pgen", GeneratorList, g => g.isEnd)
-const parseIgen = (chunk, data) => parseChunk(chunk, data, "igen", GeneratorList)
-const parseShdr = (chunk, data) => parseChunk(chunk, data, "shdr", SampleHeader, s => s.isEnd)
+const parseInst = (chunk, data) =>
+  parseChunk(chunk, data, "inst", Instrument, (i) => i.isEnd)
+const parseIbag = (chunk, data) =>
+  parseChunk(chunk, data, "ibag", InstrumentBag)
+const parsePmod = (chunk, data) =>
+  parseChunk(chunk, data, "pmod", ModulatorList, (m) => m.isEnd)
+const parseImod = (chunk, data) =>
+  parseChunk(chunk, data, "imod", ModulatorList, (m) => m.isEnd)
+const parsePgen = (chunk, data) =>
+  parseChunk(chunk, data, "pgen", GeneratorList, (g) => g.isEnd)
+const parseIgen = (chunk, data) =>
+  parseChunk(chunk, data, "igen", GeneratorList)
+const parseShdr = (chunk, data) =>
+  parseChunk(chunk, data, "shdr", SampleHeader, (s) => s.isEnd)
 
 function adjustSampleData(sample, sampleRate) {
   let multiply = 1
@@ -160,16 +189,24 @@ function adjustSampleData(sample, sampleRate) {
 
   return {
     sample,
-    multiply
+    multiply,
   }
 }
 
-function loadSample(sampleHeader: SampleHeader[], samplingDataOffset: number, data: Uint8Array): Int16Array[] {
-  return sampleHeader.map(header => {
-    let sample = new Int16Array(new Uint8Array(data.subarray(
-      samplingDataOffset + header.start * 2,
-      samplingDataOffset + header.end   * 2
-    )).buffer)
+function loadSample(
+  sampleHeader: SampleHeader[],
+  samplingDataOffset: number,
+  data: Uint8Array
+): Int16Array[] {
+  return sampleHeader.map((header) => {
+    let sample = new Int16Array(
+      new Uint8Array(
+        data.subarray(
+          samplingDataOffset + header.start * 2,
+          samplingDataOffset + header.end * 2
+        )
+      ).buffer
+    )
     if (header.sampleRate > 0) {
       const adjust = adjustSampleData(sample, header.sampleRate)
       sample = adjust.sample

@@ -4,10 +4,4 @@ import View from "./View"
 import MidiMessageHandler from "./MidiMessageHandler"
 import delegateProxy from "./delegateProxy"
 
-export {
-  WebMidiLink,
-  Synthesizer,
-  View,
-  MidiMessageHandler,
-  delegateProxy
-}
+export { WebMidiLink, Synthesizer, View, MidiMessageHandler, delegateProxy }

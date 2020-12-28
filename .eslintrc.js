@@ -1,7 +1,7 @@
 module.exports = {
   env: {
     browser: true,
-    es6: true
+    es6: true,
   },
   parser: "babel-eslint",
   extends: ["eslint:recommended"],
@@ -11,11 +11,11 @@ module.exports = {
     "no-sparse-arrays": "off",
     "no-console": "off",
     "no-unused-vars": "warn",
-    "space-before-function-paren": [ "warn", "never" ]
+    "space-before-function-paren": ["warn", "never"],
   },
   globals: {
     AudioContext: false,
     webkitAudioContext: false,
-    mozAudioContext: false
-  }
-};
+    mozAudioContext: false,
+  },
+}

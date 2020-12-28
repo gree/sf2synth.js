@@ -2,7 +2,7 @@ const fs = require("fs")
 import parse from "./Parser"
 import SoundFont, { convertTime } from "./SoundFont"
 
-describe('SoundFont', () => {
+describe("SoundFont", () => {
   const input = fs.readFileSync("./fixture/TestSoundFont.sf2")
   const parsed = parse(input)
   const soundFont = new SoundFont(parsed)
@@ -12,7 +12,7 @@ describe('SoundFont', () => {
     const zone = soundFont.getPresetZone(0)
     expect(zone).not.toBeNull()
   })
-  
+
   it("should create Instrument Zone", () => {
     const ids = soundFont.getInstrumentZoneIndexes(1)
     {

@@ -5,7 +5,7 @@ import { Chunk } from "./RiffParser"
 export class VersionTag {
   major: number
   minor: number
-  
+
   static parse(stream: Stream) {
     const v = new VersionTag()
     v.major = stream.readInt8()
@@ -15,22 +15,22 @@ export class VersionTag {
 }
 
 export class Info {
-  comment: string|null
-  copyright: string|null
-  creationDate: string|null
-  engineer: string|null
+  comment: string | null
+  copyright: string | null
+  creationDate: string | null
+  engineer: string | null
   name: string
-  product: string|null
-  software: string|null
+  product: string | null
+  software: string | null
   version: VersionTag
-  soundEngine: string|null
-  romName: string|null
-  romVersion: VersionTag|null
+  soundEngine: string | null
+  romName: string | null
+  romVersion: VersionTag | null
 
   // LIST - INFO の全ての chunk
   static parse(data: Uint8Array, chunks: Chunk[]) {
     function getChunk(type) {
-      return chunks.find(c => c.type === type) 
+      return chunks.find((c) => c.type === type)
     }
 
     function toStream(chunk) {
@@ -52,7 +52,7 @@ export class Info {
       }
       return VersionTag.parse(toStream(chunk))
     }
-    
+
     const info = new Info()
     info.comment = readString("ICMT")
     info.copyright = readString("ICOP")
@@ -117,17 +117,14 @@ export class RangeValue {
   }
 
   static parse(stream: Stream) {
-    return new RangeValue(
-      stream.readByte(), 
-      stream.readByte()
-    )
+    return new RangeValue(stream.readByte(), stream.readByte())
   }
 }
 
 export class ModulatorList {
   sourceOper: number
   destinationOper: number
-  value: number|RangeValue
+  value: number | RangeValue
   amountSourceOper: number
   transOper: number
 
@@ -136,11 +133,13 @@ export class ModulatorList {
   }
 
   get isEnd() {
-    return this.sourceOper === 0 && 
+    return (
+      this.sourceOper === 0 &&
       this.destinationOper === 0 &&
       this.value === 0 &&
       this.amountSourceOper === 0 &&
-      this. transOper === 0
+      this.transOper === 0
+    )
   }
 
   static parse(stream: Stream) {
@@ -150,17 +149,17 @@ export class ModulatorList {
     t.destinationOper = stream.readWORD()
 
     switch (t.type) {
-      case 'keyRange': /* FALLTHROUGH */
-      case 'velRange': /* FALLTHROUGH */
-      case 'keynum': /* FALLTHROUGH */
-      case 'velocity':
+      case "keyRange": /* FALLTHROUGH */
+      case "velRange": /* FALLTHROUGH */
+      case "keynum": /* FALLTHROUGH */
+      case "velocity":
         t.value = RangeValue.parse(stream)
         break
       default:
         t.value = stream.readInt16()
         break
     }
-    
+
     t.amountSourceOper = stream.readWORD()
     t.transOper = stream.readWORD()
 
@@ -170,15 +169,14 @@ export class ModulatorList {
 
 export class GeneratorList {
   code: number
-  value: number|RangeValue
+  value: number | RangeValue
 
   get type() {
     return GeneratorEnumeratorTable[this.code]
   }
 
   get isEnd() {
-    return this.code === 0 &&
-      this.value === 0
+    return this.code === 0 && this.value === 0
   }
 
   static parse(stream: Stream) {
@@ -186,10 +184,10 @@ export class GeneratorList {
     t.code = stream.readWORD()
 
     switch (t.type) {
-      case 'keynum': /* FALLTHROUGH */
-      case 'keyRange': /* FALLTHROUGH */
-      case 'velRange': /* FALLTHROUGH */
-      case 'velocity':
+      case "keynum": /* FALLTHROUGH */
+      case "keyRange": /* FALLTHROUGH */
+      case "velRange": /* FALLTHROUGH */
+      case "velocity":
         t.value = RangeValue.parse(stream)
         break
       default:
@@ -208,7 +206,7 @@ export class Instrument {
   get isEnd() {
     return this.instrumentName === "EOI"
   }
-  
+
   static parse(stream: Stream) {
     const t = new Instrument()
     t.instrumentName = stream.readString(20)
@@ -220,7 +218,7 @@ export class Instrument {
 export class InstrumentBag {
   instrumentGeneratorIndex: number
   instrumentModulatorIndex: number
-  
+
   static parse(stream: Stream) {
     const t = new InstrumentBag()
     t.instrumentGeneratorIndex = stream.readWORD()
@@ -274,5 +272,5 @@ export const SampleLink = {
   RomMonoSample: 0x8001,
   RomRightSample: 0x8002,
   RomLeftSample: 0x8004,
-  RomLinkedSample: 0x8008
+  RomLinkedSample: 0x8008,
 }

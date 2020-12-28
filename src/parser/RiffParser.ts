@@ -8,11 +8,16 @@ function parseChunk(input: Uint8Array, ip: number, bigEndian: boolean): Chunk {
 }
 
 export interface Options {
-  padding?: boolean,
+  padding?: boolean
   bigEndian?: boolean
 }
 
-export function parseRiff(input: Uint8Array, index: number = 0, length: number, { padding = true, bigEndian = false }: Options = {}) {
+export function parseRiff(
+  input: Uint8Array,
+  index: number = 0,
+  length: number,
+  { padding = true, bigEndian = false }: Options = {}
+) {
   const chunkList: Chunk[] = []
   const end = length + index
   let ip = index
@@ -20,12 +25,12 @@ export function parseRiff(input: Uint8Array, index: number = 0, length: number, 
   while (ip < end) {
     const chunk = parseChunk(input, ip, bigEndian)
     ip = chunk.offset + chunk.size
-    
+
     // padding
     if (padding && ((ip - index) & 1) === 1) {
       ip++
     }
-    
+
     chunkList.push(chunk)
   }
 

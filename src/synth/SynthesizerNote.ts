@@ -17,7 +17,6 @@ export interface InstrumentState {
 }
 
 export default class SynthesizerNote {
-
   //---------------------------------------------------------------------------
   // audio node
   //---------------------------------------------------------------------------
@@ -50,7 +49,12 @@ export default class SynthesizerNote {
   noteOffState: boolean
   sampleModes: number
 
-  constructor(ctx: AudioContext, destination: AudioNode, noteInfo: NoteInfo, instrument: InstrumentState) {
+  constructor(
+    ctx: AudioContext,
+    destination: AudioNode,
+    noteInfo: NoteInfo,
+    instrument: InstrumentState
+  ) {
     this.ctx = ctx
     this.destination = destination
     this.noteInfo = noteInfo
@@ -71,7 +75,10 @@ export default class SynthesizerNote {
   noteOn() {
     const { ctx, noteInfo } = this
 
-    const sample = noteInfo.sample.subarray(0, noteInfo.sample.length + noteInfo.end)
+    const sample = noteInfo.sample.subarray(
+      0,
+      noteInfo.sample.length + noteInfo.end
+    )
     this.audioBuffer = ctx.createBuffer(1, sample.length, noteInfo.sampleRate)
 
     const channelData = this.audioBuffer.getChannelData(0)
@@ -80,7 +87,7 @@ export default class SynthesizerNote {
     // buffer source
     const bufferSource = ctx.createBufferSource()
     bufferSource.buffer = this.audioBuffer
-    bufferSource.loop = this.sampleModes !== 0;
+    bufferSource.loop = this.sampleModes !== 0
     bufferSource.loopStart = noteInfo.loopStart / noteInfo.sampleRate
     bufferSource.loopEnd = noteInfo.loopEnd / noteInfo.sampleRate
     bufferSource.onended = () => this.disconnect()
@@ -88,16 +95,20 @@ export default class SynthesizerNote {
     this.updatePitchBend(this.pitchBend)
 
     // audio node
-    const output = this.gainOutput = ctx.createGain()
+    const output = (this.gainOutput = ctx.createGain())
     const outputGain = output.gain
 
     // expression
-    this.expressionGain = ctx.createGain();
+    this.expressionGain = ctx.createGain()
     //this.expressionGain.gain.value = this.expression / 127;
-    this.expressionGain.gain.setTargetAtTime(this.expression / 127, this.ctx.currentTime, 0.015);
+    this.expressionGain.gain.setTargetAtTime(
+      this.expression / 127,
+      this.ctx.currentTime,
+      0.015
+    )
 
     // Modulator
-    const modulator = this.modulator = ctx.createBiquadFilter();
+    const modulator = (this.modulator = ctx.createBiquadFilter())
 
     // filter
     const filter = ctx.createBiquadFilter()
@@ -107,33 +118,36 @@ export default class SynthesizerNote {
     // panpot
     // TODO: ドラムパートのPanが変化した場合、その計算をしなければならない
     // http://cpansearch.perl.org/src/PJB/MIDI-SoundFont-1.08/doc/sfspec21.html#8.4.6
-    const pan = noteInfo.pan ? noteInfo.pan / 120 : this.panpot;
-    const panner = this.panner = ctx.createPanner()
+    const pan = noteInfo.pan ? noteInfo.pan / 120 : this.panpot
+    const panner = (this.panner = ctx.createPanner())
     panner.panningModel = "equalpower"
     panner.setPosition(
-      Math.sin(pan * Math.PI / 2),
+      Math.sin((pan * Math.PI) / 2),
       0,
-      Math.cos(pan * Math.PI / 2)
+      Math.cos((pan * Math.PI) / 2)
     )
 
     //---------------------------------------------------------------------------
     // Delay, Attack, Hold, Decay, Sustain
     //---------------------------------------------------------------------------
-    let attackVolume = this.volume * (this.velocity / 127) * (1 - noteInfo.initialAttenuation / 1000);
+    let attackVolume =
+      this.volume *
+      (this.velocity / 127) *
+      (1 - noteInfo.initialAttenuation / 1000)
     if (attackVolume < 0) {
-      attackVolume = 0;
+      attackVolume = 0
     }
 
     const now = this.ctx.currentTime
 
-    const volDelay = now + noteInfo.volDelay;
-    const volAttack = volDelay + noteInfo.volAttack;
-    const volHold = volAttack + noteInfo.volHold;
-    const volDecay = volHold + noteInfo.volDecay;
-    const modDelay = now + noteInfo.modDelay;
-    const modAttack = volDelay + noteInfo.modAttack;
-    const modHold = modAttack + noteInfo.modHold;
-    const modDecay = modHold + noteInfo.modDecay;
+    const volDelay = now + noteInfo.volDelay
+    const volAttack = volDelay + noteInfo.volAttack
+    const volHold = volAttack + noteInfo.volHold
+    const volDecay = volHold + noteInfo.volDecay
+    const modDelay = now + noteInfo.modDelay
+    const modAttack = volDelay + noteInfo.modAttack
+    const modHold = modAttack + noteInfo.modHold
+    const modDecay = modHold + noteInfo.modDecay
 
     const startTime = noteInfo.start / noteInfo.sampleRate
 
@@ -143,32 +157,38 @@ export default class SynthesizerNote {
       .setValueAtTime(0, volDelay)
       .setTargetAtTime(attackVolume, volDelay, noteInfo.volAttack)
       .setValueAtTime(attackVolume, volHold)
-      .linearRampToValueAtTime(attackVolume * (1 - noteInfo.volSustain), volDecay);
+      .linearRampToValueAtTime(
+        attackVolume * (1 - noteInfo.volSustain),
+        volDecay
+      )
 
     // modulation envelope
-    const baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
-    const peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
-    const sustainFreq = baseFreq + (peekFreq - baseFreq) * (1 - noteInfo.modSustain);
+    const baseFreq = this.amountToFreq(noteInfo.initialFilterFc)
+    const peekFreq = this.amountToFreq(
+      noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc
+    )
+    const sustainFreq =
+      baseFreq + (peekFreq - baseFreq) * (1 - noteInfo.modSustain)
 
-    modulator.Q.setValueAtTime(Math.pow(10, noteInfo.initialFilterQ / 200), now);
+    modulator.Q.setValueAtTime(Math.pow(10, noteInfo.initialFilterQ / 200), now)
     //modulator.frequency.value = baseFreq;
-    modulator.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.015);
-    modulator.type = 'lowpass';
+    modulator.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.015)
+    modulator.type = "lowpass"
     modulator.frequency
       .setValueAtTime(baseFreq, now)
       .setValueAtTime(baseFreq, modDelay)
       .setTargetAtTime(peekFreq, modDelay, noteInfo.modAttack++) // For FireFox fix
       .setValueAtTime(peekFreq, modHold)
-      .linearRampToValueAtTime(sustainFreq, modDecay);
+      .linearRampToValueAtTime(sustainFreq, modDecay)
 
     // connect
-    bufferSource.connect(modulator);
-    modulator.connect(panner);
-    panner.connect(this.expressionGain);
-    this.expressionGain.connect(output);
+    bufferSource.connect(modulator)
+    modulator.connect(panner)
+    panner.connect(this.expressionGain)
+    this.expressionGain.connect(output)
 
     if (!noteInfo.mute) {
-      this.gainOutput.connect(this.destination);
+      this.gainOutput.connect(this.destination)
     }
 
     // fire
@@ -183,54 +203,63 @@ export default class SynthesizerNote {
     const { noteInfo, bufferSource } = this
     const output = this.gainOutput
     const now = this.ctx.currentTime
-    const release = noteInfo.releaseTime - 64;
+    const release = noteInfo.releaseTime - 64
 
     //---------------------------------------------------------------------------
     // volume release time
     //---------------------------------------------------------------------------
-    const volEndTimeTmp = noteInfo.volRelease * output.gain.value;
-    const volEndTime = now + (volEndTimeTmp * (1 + release / (release < 0 ? 64 : 63)));
+    const volEndTimeTmp = noteInfo.volRelease * output.gain.value
+    const volEndTime =
+      now + volEndTimeTmp * (1 + release / (release < 0 ? 64 : 63))
 
     //---------------------------------------------------------------------------
     // modulation release time
     //---------------------------------------------------------------------------
-    const modulator = this.modulator;
-    const baseFreq = this.amountToFreq(noteInfo.initialFilterFc);
-    const peekFreq = this.amountToFreq(noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc);
-    const modEndTime = now + noteInfo.modRelease *
-      (
-        baseFreq === peekFreq ?
-          1 :
-          (modulator.frequency.value - baseFreq) / (peekFreq - baseFreq)
-      );
+    const modulator = this.modulator
+    const baseFreq = this.amountToFreq(noteInfo.initialFilterFc)
+    const peekFreq = this.amountToFreq(
+      noteInfo.initialFilterFc + noteInfo.modEnvToFilterFc
+    )
+    const modEndTime =
+      now +
+      noteInfo.modRelease *
+        (baseFreq === peekFreq
+          ? 1
+          : (modulator.frequency.value - baseFreq) / (peekFreq - baseFreq))
 
     //---------------------------------------------------------------------------
     // Release
     //---------------------------------------------------------------------------
     switch (noteInfo.sampleModes) {
       case 0:
-        break;
+        break
       case 1:
-        output.gain.cancelScheduledValues(0);
-        output.gain.setValueAtTime(output.gain.value, now);
-        output.gain.linearRampToValueAtTime(0, volEndTime);
+        output.gain.cancelScheduledValues(0)
+        output.gain.setValueAtTime(output.gain.value, now)
+        output.gain.linearRampToValueAtTime(0, volEndTime)
 
-        modulator.frequency.cancelScheduledValues(0);
-        modulator.frequency.setValueAtTime(modulator.frequency.value, now);
-        modulator.frequency.linearRampToValueAtTime(baseFreq, modEndTime);
+        modulator.frequency.cancelScheduledValues(0)
+        modulator.frequency.setValueAtTime(modulator.frequency.value, now)
+        modulator.frequency.linearRampToValueAtTime(baseFreq, modEndTime)
 
-        bufferSource.playbackRate.cancelScheduledValues(0);
-        bufferSource.playbackRate.setValueAtTime(bufferSource.playbackRate.value, now);
-        bufferSource.playbackRate.linearRampToValueAtTime(this.computedPlaybackRate, modEndTime);
+        bufferSource.playbackRate.cancelScheduledValues(0)
+        bufferSource.playbackRate.setValueAtTime(
+          bufferSource.playbackRate.value,
+          now
+        )
+        bufferSource.playbackRate.linearRampToValueAtTime(
+          this.computedPlaybackRate,
+          modEndTime
+        )
 
-        bufferSource.stop(volEndTime);
-        break;
+        bufferSource.stop(volEndTime)
+        break
       case 2:
-        console.log('detect unused sampleModes');
-        break;
+        console.log("detect unused sampleModes")
+        break
       case 3:
-        bufferSource.loop = false;
-        break;
+        bufferSource.loop = false
+        break
     }
   }
 
@@ -245,30 +274,35 @@ export default class SynthesizerNote {
     const start = this.startTime
     const modAttack = start + noteInfo.modAttack
     const modDecay = modAttack + noteInfo.modDecay
-    const peekPitch = computed * Math.pow(
-      Math.pow(2, 1 / 12),
-      noteInfo.modEnvToPitch * noteInfo.scaleTuning
-    )
+    const peekPitch =
+      computed *
+      Math.pow(
+        Math.pow(2, 1 / 12),
+        noteInfo.modEnvToPitch * noteInfo.scaleTuning
+      )
 
     playbackRate.cancelScheduledValues(0)
     playbackRate.setValueAtTime(computed, start)
     playbackRate.linearRampToValueAtTime(peekPitch, modAttack)
-    playbackRate.linearRampToValueAtTime(computed + (peekPitch - computed) * (1 - noteInfo.modSustain), modDecay)
+    playbackRate.linearRampToValueAtTime(
+      computed + (peekPitch - computed) * (1 - noteInfo.modSustain),
+      modDecay
+    )
   }
 
   updateExpression(expression: number) {
-    this.expressionGain.gain.value = (this.expression = expression) / 127;
-  };
+    this.expressionGain.gain.value = (this.expression = expression) / 127
+  }
 
   updatePitchBend(pitchBend: number) {
-    this.computedPlaybackRate = this.playbackRate * Math.pow(
-      Math.pow(2, 1 / 12),
-      (
-        this.pitchBendSensitivity * (
-          pitchBend / (pitchBend < 0 ? 8192 : 8191)
-        )
-      ) * this.noteInfo.scaleTuning
-    )
+    this.computedPlaybackRate =
+      this.playbackRate *
+      Math.pow(
+        Math.pow(2, 1 / 12),
+        this.pitchBendSensitivity *
+          (pitchBend / (pitchBend < 0 ? 8192 : 8191)) *
+          this.noteInfo.scaleTuning
+      )
     this.schedulePlaybackRate()
   }
 }

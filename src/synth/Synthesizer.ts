@@ -44,7 +44,7 @@ export default class Synthesizer implements Listener {
   }
 
   init() {
-    this.channels = [];
+    this.channels = []
     for (let i = 0; i < 16; ++i) {
       this.channels.push(new Channel())
       this.programChange(i, 0x00)
@@ -72,11 +72,15 @@ export default class Synthesizer implements Listener {
   }
 
   setMasterVolume(volume: number) {
-    const vol = BASE_VOLUME * volume / 0x8000;
+    const vol = (BASE_VOLUME * volume) / 0x8000
     this.masterVolume = volume
     if (vol) {
       //this.gainMaster.gain.value = BASE_VOLUME * volume / 0x8000
-      this.gainMaster.gain.setTargetAtTime(BASE_VOLUME * volume / 0x8000, this.ctx.currentTime, 0.015);
+      this.gainMaster.gain.setTargetAtTime(
+        (BASE_VOLUME * volume) / 0x8000,
+        this.ctx.currentTime,
+        0.015
+      )
     }
   }
 
@@ -84,14 +88,19 @@ export default class Synthesizer implements Listener {
     if (!this.soundFont) {
       return
     }
-    const bankNumber = this.getBank(channelNumber);
+    const bankNumber = this.getBank(channelNumber)
     const channel = this.channels[channelNumber]
 
     if (channel === undefined) {
-      return;
+      return
     }
 
-    const noteInfo = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key, velocity)
+    const noteInfo = this.soundFont.getInstrumentKey(
+      bankNumber,
+      channel.instrument,
+      key,
+      velocity
+    )
 
     if (!noteInfo) {
       return
@@ -113,7 +122,7 @@ export default class Synthesizer implements Listener {
       mute: channel.mute,
       releaseTime: channel.releaseTime,
       cutOffFrequency: channel.cutOffFrequency,
-      harmonicContent: channel.harmonicContent
+      harmonicContent: channel.harmonicContent,
     }
 
     // percussion
@@ -122,17 +131,22 @@ export default class Synthesizer implements Listener {
         // 42: Closed Hi-Hat
         // 44: Pedal Hi-Hat
         // 46: Open Hi-Hat
-        this.noteOff(channelNumber, 46, 0);
+        this.noteOff(channelNumber, 46, 0)
       }
       if (key === 80) {
         // 80: Mute Triangle
         // 81: Open Triangle
-        this.noteOff(channelNumber, 81, 0);
+        this.noteOff(channelNumber, 81, 0)
       }
     }
 
     // note on
-    const note = new SynthesizerNote(this.ctx, this.gainMaster, noteInfo, instrumentKey)
+    const note = new SynthesizerNote(
+      this.ctx,
+      this.gainMaster,
+      noteInfo,
+      instrumentKey
+    )
     note.noteOn()
     this.channels[channelNumber].currentNoteOn.push(note)
   }
@@ -141,14 +155,18 @@ export default class Synthesizer implements Listener {
     if (!this.soundFont) {
       return
     }
-    const bankNumber = this.getBank(channelNumber);
+    const bankNumber = this.getBank(channelNumber)
     const channel = this.channels[channelNumber]
 
     if (channel === undefined) {
-      return;
+      return
     }
 
-    const instrumentKey = this.soundFont.getInstrumentKey(bankNumber, channel.instrument, key)
+    const instrumentKey = this.soundFont.getInstrumentKey(
+      bankNumber,
+      channel.instrument,
+      key
+    )
 
     if (!instrumentKey) {
       return
@@ -168,15 +186,15 @@ export default class Synthesizer implements Listener {
   }
 
   hold(channelNumber: number, value: boolean) {
-    this.channels[channelNumber].hold = value;
+    this.channels[channelNumber].hold = value
   }
 
   bankSelectMsb(channelNumber: number, value: number) {
-    this.channels[channelNumber].bankMsb = value;
+    this.channels[channelNumber].bankMsb = value
   }
 
   bankSelectLsb(channelNumber: number, value: number) {
-    this.channels[channelNumber].bankLsb = value;
+    this.channels[channelNumber].bankLsb = value
   }
 
   programChange(channelNumber: number, instrument: number) {
@@ -190,11 +208,11 @@ export default class Synthesizer implements Listener {
   expression(channelNumber: number, expression: number) {
     const currentNoteOn = this.channels[channelNumber].currentNoteOn
     for (let i = 0, il = currentNoteOn.length; i < il; ++i) {
-      currentNoteOn[i].updateExpression(expression);
+      currentNoteOn[i].updateExpression(expression)
     }
 
-    this.channels[channelNumber].expression = expression;
-  };
+    this.channels[channelNumber].expression = expression
+  }
 
   panpotChange(channelNumber: number, panpot: number) {
     this.channels[channelNumber].panpot = panpot
@@ -216,7 +234,7 @@ export default class Synthesizer implements Listener {
   }
 
   releaseTime(channelNumber: number, releaseTime: number) {
-    this.channels[channelNumber].releaseTime = releaseTime;
+    this.channels[channelNumber].releaseTime = releaseTime
   }
 
   allSoundOff(channelNumber: number) {
@@ -235,56 +253,56 @@ export default class Synthesizer implements Listener {
     this.channels[channelNumber].reverb = depth
   }
 
-  private getBank(channelNumber: number):number {
-    let bankIndex = 0;
-    const channel = this.channels[channelNumber];
+  private getBank(channelNumber: number): number {
+    let bankIndex = 0
+    const channel = this.channels[channelNumber]
 
     if (channel === undefined) {
-      return 0;
+      return 0
     }
 
     if (channelNumber === 9) {
-      this.setPercussionPart(9, true);
-      return this.isXG ? 127 : 128;
+      this.setPercussionPart(9, true)
+      return this.isXG ? 127 : 128
     }
 
     if (this.isXG) {
       // XG音源は、MSB→LSBの優先順でバンクセレクトをする。
       if (channel.bankMsb === 64) {
         // Bank Select MSB #64 (Voice Type: SFX)
-        bankIndex = 125;
+        bankIndex = 125
       } else if (channel.bankMsb === 126 || channel.bankMsb === 127) {
         // Bank Select MSB #126 (Voice Type: Drum)
         // Bank Select MSB #127 (Voice Type: Drum)
-        bankIndex = channel.bankMsb;
+        bankIndex = channel.bankMsb
       } else {
         // Bank Select MSB #0 (Voice Type: Normal)
         // TODO:本来こちらが正しいが、バンクに存在しない楽器の処理ができていないためコメントアウト
-        //bankIndex = this.channelBankLsb[channel];  
-        bankIndex = 0;
+        //bankIndex = this.channelBankLsb[channel];
+        bankIndex = 0
       }
     } else if (this.isGS) {
       // GS音源
-      bankIndex = 0;
+      bankIndex = 0
 
       if (channel.isPercussionPart) {
         // http://www.roland.co.jp/support/by_product/sd-20/knowledge_base/1826700/
-        bankIndex = 128;
+        bankIndex = 128
       } else {
         // TODO: XG音源前提なんで・・・
         //bankIndex = this.channelBankMsb[channel];
       }
     } else {
       // GM音源の場合バンクセレクト無効化
-      bankIndex = 0;
+      bankIndex = 0
     }
     //if (this.percussionPart[channel] && SoundFont.Instruments.PercussionProgramName[this.channelInstrument[channel]] === void 0) {
     // パーカッションチャンネルで、GM に存在しないドラムセットが呼び出された時は、Standard Setを呼び出す。
     //this.channelInstrument[channel] = 0;
     //}
-    return bankIndex;
+    return bankIndex
   }
   setPercussionPart(channelNumber: number, sw: boolean) {
-    this.channels[channelNumber].isPercussionPart = sw;
+    this.channels[channelNumber].isPercussionPart = sw
   }
 }
