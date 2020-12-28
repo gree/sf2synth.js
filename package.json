@@ -9,7 +9,21 @@
     "build": "tsc",
     "test": "jest"
   },
-  "author": "",
+  "author": {
+    "name": "imaya / GREE Inc.",
+    "url": "https://github.com/gree"
+  },
+  "contributors": [
+    {
+      "name": "ryohey",
+      "email": "info@codingcafe.jp"
+    },
+    {
+      "name": "Logue",
+      "email": "logue@hotmail.co.jp",
+      "url": "https://logue.dev"
+    }
+  ],
   "license": "MIT",
   "dependencies": {
     "tslint": "^5.9.1"
