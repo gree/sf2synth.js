@@ -1,8 +1,8 @@
-import WebMidiLink from "../src/WebMidiLink"
-import Synthesizer from "../src/Synthesizer"
-import View from "../src/View"
-import MidiMessageHandler from "../src/MidiMessageHandler"
-import delegateProxy from "../src/delegateProxy"
+import WebMidiLink from "../src/synth/WebMidiLink"
+import Synthesizer from "../src/synth/Synthesizer"
+import View from "../src/synth/View"
+import MidiMessageHandler from "../src/synth/MidiMessageHandler"
+import delegateProxy from "../src/synth/delegateProxy"
 
 export {
   WebMidiLink,

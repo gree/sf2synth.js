@@ -1,6 +1,6 @@
 import SynthesizerNote from "./SynthesizerNote"
-import parse from "./Parser"
-import SoundFont from "./SoundFont"
+import parse from "../parser/Parser"
+import SoundFont from "../parser/SoundFont"
 import { InstrumentState } from "./SynthesizerNote"
 import { Listener } from "./MidiMessageHandler"
 

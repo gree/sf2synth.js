@@ -1,5 +1,5 @@
-import parse from "../src/Parser"
-import SoundFont from "../src/SoundFont"
+import parse from "../src/parser/Parser"
+import SoundFont from "../src/parser/SoundFont"
 
 export {
   parse,

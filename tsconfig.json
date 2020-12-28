@@ -1,18 +1,24 @@
 {
   "compilerOptions": {
-    "lib": ["es6", "dom"],
-    "target": "es5",
+    "target": "es2016",
+    "lib": ["es2016", "dom"],
     "sourceMap": true,
+    "declaration": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "outDir": "bin",
+    "moduleResolution": "node"
   },
   "include": [
     "src/**/*"
   ],
   "exclude": [
+    "bin",
+    "public",
     "node_modules",
+    "**/*.test.ts",
     "**/*.spec.ts"
   ]
 }
