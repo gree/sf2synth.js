@@ -14,7 +14,8 @@
   float: left;
 }
 
-.synth .keys>.white, .keys>.black {
+.synth .keys>.white,
+.keys>.black {
   position: relative;
 }
 
@@ -41,11 +42,17 @@
   z-index: 999;
 }
 
-.synth .volume::before {content: "VOL:";}
+.synth .volume::before {
+  content: "VOL:";
+}
 
-.synth .panpot::before {content: "PAN:";}
+.synth .panpot::before {
+  content: "PAN:";
+}
 
-.synth .pitchBend::before {content: "BEND:";}
+.synth .pitchBend::before {
+  content: "BEND:";
+}
 
 .synth .pitchBendSensitivity::before {
   content: "RANGE:";
@@ -57,7 +64,7 @@
   border: none;
   outline: none;
   font-family: Consolas;
-  width: 12em;
+  width: 18em;
   font-size: 100%;
   -webkit-app-region: no-drag;
 }
@@ -67,7 +74,11 @@
   color: rgb(159, 159, 253);
 }
 
-.synth .program, .volume, .panpot, .pitchBend, .pitchBendSensitivity {
+.synth .program,
+.volume,
+.panpot,
+.pitchBend,
+.pitchBendSensitivity {
   display: inline-block;
 }
 

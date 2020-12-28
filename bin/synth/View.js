@@ -18,6 +18,8 @@ function renderProgramOptions(programNames, bank) {
     const names = programNames[bank];
     for (let i in names) {
         const name = names[i];
+        if (name == "None (None)")
+            continue;
         html += `<option value="${i}">${i}: ${name}</option>`;
     }
     return `<select>${html}</select>`;
@@ -34,15 +36,13 @@ function renderInstrument(program) {
     </div>
   `);
 }
-function objectMap(o, func) {
-    const result = {};
-    Object.keys(o).forEach(key => {
-        result[key] = func(o[key]);
+function programNamesFromBankSet(bankSet) {
+    //return objectMap(bankSet, bank => objectMap(bank, s => s.name))
+    let result = {};
+    Object.keys(bankSet).forEach(no => {
+        result[no] = bankSet[no];
     });
     return result;
-}
-function programNamesFromBankSet(bankSet) {
-    return objectMap(bankSet, bank => objectMap(bank, s => s.name));
 }
 function mergeProgramNames(left, right) {
     function mergedKeys(a, b) {
@@ -192,6 +192,18 @@ export default class View {
     setMasterVolume(_volume) {
     }
     resetAllControl(_channelNumber) {
+    }
+    init() {
+    }
+    expression(_value) {
+    }
+    setPercussionPart(_channelNumber, _sw) {
+    }
+    hold(_channelNumber, _sw) {
+    }
+    setReverbDepth(_channelNumber, _depth) {
+    }
+    releaseTime(_channelNumber, _value) {
     }
 }
 //# sourceMappingURL=View.js.map

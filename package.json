@@ -5,13 +5,35 @@
   "main": "bin/index.js",
   "types": "bin/index.d.ts",
   "scripts": {
+    "start": "rollup -c --watch",
     "build": "tsc",
     "test": "jest"
   },
-  "author": "",
+  "author": {
+    "name": "imaya / GREE Inc.",
+    "url": "https://github.com/gree"
+  },
+  "contributors": [
+    {
+      "name": "ryohey",
+      "email": "info@codingcafe.jp"
+    },
+    {
+      "name": "Logue",
+      "email": "logue@hotmail.co.jp",
+      "url": "https://logue.dev"
+    }
+  ],
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "tslint": "^5.9.1"
+  },
   "devDependencies": {
+    "assert": "^1.4.1",
+    "rollup": "^0.53.4",
+    "rollup-plugin-serve": "^0.4.2",
+    "rollup-plugin-sourcemaps": "^0.4.2",
+    "rollup-plugin-typescript": "^0.8.1",
     "@types/jest": "^24.0.19",
     "@types/node": "^12.11.1",
     "jest": "^24.9.0",

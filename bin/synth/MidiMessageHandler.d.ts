@@ -1,4 +1,5 @@
 export interface Listener {
+    init(): any;
     noteOn(channel: number, key: number, velocity: number): any;
     noteOff(channel: number, key: number, velocity: number): any;
     setMasterVolume(volume: number): any;
@@ -9,6 +10,13 @@ export interface Listener {
     pitchBendSensitivity(channelNumber: number, sensitivity: number): any;
     allSoundOff(channelNumber: number): any;
     resetAllControl(channelNumber: number): any;
+    expression(channelNumber: number, expression: number): any;
+    setPercussionPart(channelNumber: number, sw: boolean): any;
+    hold(channelNumber: number, sw: boolean): any;
+    setReverbDepth(channelNumber: number, depth: number): any;
+    releaseTime(channelNumber: number, value: number): any;
+    isXG: boolean;
+    isGS: boolean;
 }
 export default class MidiMessageHandler {
     private RpnMsb;

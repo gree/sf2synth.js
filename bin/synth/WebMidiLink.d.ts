@@ -7,7 +7,9 @@ export default class WebMidiLink {
     ready: boolean;
     synth: Synthesizer;
     view: View;
-    constructor();
+    target: Element | null;
+    wml: Window | null;
+    constructor(target?: string);
     setup(url: any): void;
     load(url: any): void;
     onload(response: ArrayBuffer): void;

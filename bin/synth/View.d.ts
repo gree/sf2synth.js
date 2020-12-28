@@ -1,6 +1,8 @@
 import Synthesizer from "./Synthesizer";
 import { Listener } from "./MidiMessageHandler";
 export default class View implements Listener {
+    isXG: boolean;
+    isGS: boolean;
     private element;
     private drag;
     draw(synth: Synthesizer): Element;
@@ -18,4 +20,10 @@ export default class View implements Listener {
     allSoundOff(_channelNumber: number): void;
     setMasterVolume(_volume: number): void;
     resetAllControl(_channelNumber: number): void;
+    init(): void;
+    expression(_value: number): void;
+    setPercussionPart(_channelNumber: number, _sw: boolean): void;
+    hold(_channelNumber: number, _sw: boolean): void;
+    setReverbDepth(_channelNumber: number, _depth: number): void;
+    releaseTime(_channelNumber: number, _value: number): void;
 }

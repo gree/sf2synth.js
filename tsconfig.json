@@ -11,10 +11,14 @@
     "outDir": "bin",
     "moduleResolution": "node"
   },
+  "include": [
+    "src/**/*"
+  ],
   "exclude": [
     "bin",
     "public",
     "node_modules",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }
